@@ -1,0 +1,68 @@
+/*
+ * The only place a colour is written (CLAUDE.md rule 3). Components use these names through
+ * Tailwind utilities (bg-ground, text-ink, border-line, ...); nothing else in src/ may contain
+ * a hex or rgb colour, and tests/unit/tokens.test.ts enforces that.
+ *
+ * scripts/make-icons.py also reads --color-ground and --color-accent from here.
+ */
+@import 'tailwindcss';
+
+@theme {
+  /* Drop Tailwind's default palette so only the tokens below exist. */
+  --color-*: initial;
+
+  /* Ground and surfaces */
+  --color-ground: #0b0c11;
+  --color-surface: #13141b;
+  --color-raised: #1b1d27;
+  --color-line: #292c3b;
+
+  /* Text */
+  --color-ink: #eceef5;
+  --color-ink-muted: #9ca1b5;
+
+  /* Brand and states */
+  --color-accent: #8f7dff;
+  --color-accent-ink: #0b0c11;
+  --color-win: #4fd1a1;
+  --color-caution: #f2b84b;
+  --color-alert: #ff7a85;
+
+  /* One accent per area; areas store the token name, never a hex (PLAN §6) */
+  --color-area-chemistry: #5ec8ff;
+  --color-area-physics: #ff9f5e;
+  --color-area-geology: #c9a36b;
+  --color-area-coaching: #ff7a85;
+  --color-area-home: #4fd1a1;
+  --color-area-admin: #b8a4ff;
+  --color-area-personal: #f2b84b;
+
+  --font-sans:
+    'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --radius-card: 0.9rem;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-ground font-sans text-ink antialiased;
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  /* A reduce-motion setting arrives later; the system preference is honoured now. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}

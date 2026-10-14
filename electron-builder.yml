@@ -1,0 +1,34 @@
+# Windows installer (PLAN §4, §11B). Unsigned: SmartScreen warns on first install.
+appId: org.shull.cortex
+productName: Cortex
+copyright: Copyright © 2026 Matthew Shull
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+asar: true
+artifactName: Cortex-Setup-${version}.${ext}
+publish:
+  provider: github
+  owner: Hayabusa015
+  repo: FocusOS
+  releaseType: release
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/icon.ico
+  # Unsigned build: also skips the Wine-only resource-editing step, so the installer can be
+  # built from Linux or Windows.
+  signAndEditExecutable: false
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  deleteAppDataOnUninstall: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Cortex
+  runAfterFinish: true

@@ -60,13 +60,17 @@ covers only how to work in this repository.
 
 ## Commands
 
-These are filled in by Phase 0:
+Use Node 24 and npm 11 (`packageManager` in `package.json`). npm 10 cannot resolve this
+dependency tree. `npx npm@11 install` works anywhere.
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Run the app in development |
+| `npm run dev` | Run the app in development (its data is kept apart from the installed app's) |
+| `npm run build` | Build the app into `out/` |
 | `npm test` | Unit tests |
-| `npm run test:e2e` | Playwright end-to-end tests |
+| `npm run test:e2e` | Playwright end-to-end tests against the built app (on Linux: `xvfb-run -a npm run test:e2e`) |
 | `npm run test:live` | Opt-in tests against the real APIs |
 | `npm run lint` / `npm run typecheck` | Static checks |
-| `npm run dist` | Build the Windows installer |
+| `npm run format` / `npm run format:check` | Prettier |
+| `npm run dist:dir` | Package the app without an installer |
+| `npm run dist` | Build the Windows installer (needs Windows; the release workflow does this) |

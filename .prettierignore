@@ -1,0 +1,14 @@
+node_modules
+out
+dist
+release
+coverage
+test-results
+package-lock.json
+*.sql
+*.png
+*.ico
+docs
+CLAUDE.md
+README.md
+.claude

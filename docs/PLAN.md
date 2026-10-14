@@ -12,7 +12,7 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 
 | Phase | Name | Status |
 |---|---|---|
-| 0 | Scaffold, release pipeline and updater | Not started |
+| 0 | Scaffold, release pipeline and updater | Built; waiting on the user's checks. SQLite: `node:sqlite`, FTS5 confirmed. Unsigned-build update result: not yet verified (needs the user's PC). See `docs/RELEASING.md` |
 | 1 | Core tasks | Not started |
 | 2 | Accomplishments and rituals | Not started |
 | 3 | Atlas (text) | Not started |
