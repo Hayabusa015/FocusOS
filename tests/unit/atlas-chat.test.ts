@@ -307,6 +307,18 @@ describe('audit fixes', () => {
     expect(store.activeFocus()).toBeNull();
   });
 
+  it("undoing Atlas's start of a session you finished takes its XP back with it", async () => {
+    fake.push(call('start_focus_session', { minutes: 25 }), say('Started.'));
+    const out = await createChat(deps).send('start a focus session');
+    const session = store.activeFocus()!;
+    now = new Date(now.getTime() + 25 * 60_000);
+    store.finishFocus(session.id, true);
+    const xp = () => store.getSummary().totalXp;
+    expect(xp()).toBeGreaterThan(0);
+    store.undo(out.changes[0]!.logId);
+    expect(xp()).toBe(0);
+  });
+
   it('a turn that fails after a change leaves a note, so the next turn does not repeat it', async () => {
     fake.push(call('create_task', { title: 'Order beakers' }), {
       error: { status: 429, type: 'rate_limit_error', message: 'slow' },

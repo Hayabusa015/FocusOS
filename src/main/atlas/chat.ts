@@ -122,10 +122,10 @@ export function createChat(deps: AtlasDeps) {
       if (busy) throw new AtlasError('Atlas is still answering. One moment.', 'invalid');
       busy = true;
       const changes: ChatReply['changes'] = [];
+      const day = ctx.today();
       try {
         const client = clientFor(deps);
         checkCap(deps);
-        const day = ctx.today();
         const history = load(day);
         const route = routeParams(deps, 'chat');
         const tools = runnableTools(TOOL_SPECS as unknown as ToolSpec[], {
@@ -184,7 +184,7 @@ export function createChat(deps: AtlasDeps) {
         // so the next turn knows what was done and does not repeat it. (History stays valid: a
         // user turn followed by an assistant turn.)
         if (changes.length > 0) {
-          save(ctx.today(), [
+          save(day, [
             { role: 'user', content: said },
             {
               role: 'assistant',

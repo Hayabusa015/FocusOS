@@ -38,7 +38,7 @@ export interface TokenUsage {
 
 const PER_MILLION = 1_000_000;
 
-/** Estimated dollars for one call. Unknown models cost 0 here, so a new model never breaks a call. */
+/** Estimated dollars for one call. An unknown model is priced like the dearest known one, so a cap never under-counts. */
 export function estimateCost(model: string, usage: TokenUsage): number {
   // A model not in the table (a fallback model the server chose) is priced like the dearest one we
   // know, so a spending cap can only over-count, never under-count.
