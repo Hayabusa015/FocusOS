@@ -5,6 +5,8 @@ import {
   AreaUpdate,
   AppSettingsPatch,
   CaptureSubmit,
+  FocusFinish,
+  FocusStart,
   MaintenanceCreate,
   MaintenanceDone,
   MaintenanceUpdate,
@@ -17,6 +19,7 @@ import {
   TaskReschedule,
   TaskUpdate,
   UndoApply,
+  WinLog,
 } from '@shared/core';
 import type { DataChanged, SettingsInfo } from '@shared/core';
 import { EmptyRequest as Empty } from '@shared/schemas';
@@ -37,12 +40,24 @@ export interface CoreIpcDeps {
 }
 
 /** Registers the Phase 1 channels. Every payload is validated before the handler sees it. */
+type Award = ReturnType<Store['takeAward']>;
+
+/** The part of a change the screen celebrates. Nothing is sent when nothing was earned. */
+function awardFields(award: Award): Pick<DataChanged, 'xp' | 'unlocked' | 'big'> {
+  return {
+    ...(award.xp !== 0 ? { xp: award.xp } : {}),
+    ...(award.unlocked.length > 0 ? { unlocked: award.unlocked } : {}),
+    ...(award.big ? { big: true } : {}),
+  };
+}
+
 export function registerCoreIpc(deps: CoreIpcDeps): void {
   const { store, isTrustedSender: trust } = deps;
 
   /** Runs a change, then tells the windows. A change that did nothing sends nothing. */
   const changed = <T>(m: { result: T; logId: string | null; summary: string | null }): T => {
-    if (m.logId) deps.notifyChanged({ logId: m.logId, summary: m.summary });
+    const award = store.takeAward();
+    if (m.logId) deps.notifyChanged({ logId: m.logId, summary: m.summary, ...awardFields(award) });
     return m.result;
   };
 
@@ -120,8 +135,59 @@ export function registerCoreIpc(deps: CoreIpcDeps): void {
     UndoApply,
     ({ id }) => {
       const undone = store.undo(id);
-      if (undone) deps.notifyChanged({ logId: null, summary: `Undid: ${undone.summary}` });
+      const award = store.takeAward();
+      if (undone) {
+        // An undo can take XP back; it never celebrates.
+        deps.notifyChanged({
+          logId: null,
+          summary: `Undid: ${undone.summary}`,
+          ...(award.xp !== 0 ? { xp: award.xp } : {}),
+        });
+      }
       return undone;
+    },
+    trust,
+  );
+
+  handle(CHANNELS.summaryGet, Empty, () => store.getSummary(), trust);
+  handle(CHANNELS.winsGet, Empty, () => store.getWins(), trust);
+  handle(CHANNELS.winsLog, WinLog, ({ text }) => changed(store.logWin(text)), trust);
+
+  handle(CHANNELS.focusActive, Empty, () => store.activeFocus(), trust);
+  handle(CHANNELS.focusStart, FocusStart, (p) => store.startFocus(p), trust);
+  handle(
+    CHANNELS.focusFinish,
+    FocusFinish,
+    ({ id, completed }) => {
+      const result = store.finishFocus(id, completed);
+      const award = store.takeAward();
+      deps.notifyChanged({
+        logId: null,
+        summary: result.xp > 0 ? `Focus session done: +${result.xp} XP` : null,
+        ...awardFields(award),
+      });
+      return result;
+    },
+    trust,
+  );
+
+  handle(
+    CHANNELS.ritualsState,
+    Empty,
+    () => store.ritualState({ briefingEnabled: deps.getSettings().settings.morningBriefing }),
+    trust,
+  );
+  handle(CHANNELS.ritualsBriefing, Empty, () => store.briefing(), trust);
+  handle(CHANNELS.ritualsBriefingShown, Empty, () => store.markBriefingShown(), trust);
+  handle(CHANNELS.ritualsShutdown, Empty, () => store.shutdown(), trust);
+  handle(
+    CHANNELS.ritualsShutdownComplete,
+    Empty,
+    () => {
+      const result = store.completeShutdown();
+      const award = store.takeAward();
+      deps.notifyChanged({ logId: null, summary: 'Day closed', ...awardFields(award) });
+      return result;
     },
     trust,
   );

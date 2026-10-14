@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AppSettings } from '@shared/core';
-import { dueNotices } from './domain/notify';
+import { dueNotices, shutdownNotice } from './domain/notify';
 import type { Notice } from './domain/notify';
 import type { KeyValueStore } from './db/settings';
 import type { Store } from './db/store';
@@ -35,6 +35,16 @@ export function createNotifier(deps: NotifierDeps) {
         quiet: { start: settings.quietStart, end: settings.quietEnd },
         sent: new Set(sentList),
       });
+      const wind = shutdownNotice({
+        now: now(),
+        enabled: settings.shutdownReminder,
+        time: settings.shutdownTime,
+        weekdaysOnly: settings.shutdownWeekdaysOnly,
+        doneToday: deps.store.ritualState({ briefingEnabled: false }).shutdownDoneToday,
+        quiet: { start: settings.quietStart, end: settings.quietEnd },
+        sent: new Set(sentList),
+      });
+      if (wind) notices.push(wind);
       if (notices.length === 0) return [];
       deps.kv.set(SENT_KEY, [...sentList, ...notices.map((n) => n.key)].slice(-SENT_LIMIT));
       for (const notice of notices) deps.show(notice);

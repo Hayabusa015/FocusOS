@@ -258,7 +258,10 @@ if (!app.requestSingleInstanceLock()) {
       getSettings: currentSettings,
       show: (notice) => {
         const n = new Notification({ title: notice.title, body: notice.body });
-        n.on('click', showWindow);
+        n.on('click', () => {
+          showWindow();
+          if (notice.action === 'shutdown') broadcast(EVENTS.openShutdown, null);
+        });
         n.show();
       },
     });

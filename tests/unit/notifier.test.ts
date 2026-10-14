@@ -60,4 +60,16 @@ describe('notifier', () => {
     store.createMaintenance({ name: 'HVAC filter', intervalDays: 90, lastDone: '2026-06-01' });
     expect(notifier.tick().map((n) => n.title)).toEqual(['HVAC filter']);
   });
+
+  it('sends the shutdown reminder once, and not after the ritual is done', () => {
+    now = new Date(2026, 9, 14, 15, 35, 0);
+    const { notifier, shown, store } = setup();
+    expect(notifier.tick().map((n) => n.action)).toEqual(['shutdown']);
+    expect(notifier.tick()).toHaveLength(0);
+    expect(shown).toEqual(['Time to wind down']);
+    // Another day, with the ritual done first: no reminder.
+    now = new Date(2026, 9, 15, 15, 35, 0);
+    store.completeShutdown();
+    expect(notifier.tick()).toHaveLength(0);
+  });
 });

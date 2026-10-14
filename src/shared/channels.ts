@@ -45,6 +45,20 @@ export const CHANNELS = {
   undoList: 'undo:list',
   undoApply: 'undo:apply',
 
+  summaryGet: 'summary:get',
+  winsGet: 'wins:get',
+  winsLog: 'wins:log',
+
+  focusActive: 'focus:active',
+  focusStart: 'focus:start',
+  focusFinish: 'focus:finish',
+
+  ritualsState: 'rituals:state',
+  ritualsBriefing: 'rituals:briefing',
+  ritualsBriefingShown: 'rituals:briefing-shown',
+  ritualsShutdown: 'rituals:shutdown',
+  ritualsShutdownComplete: 'rituals:shutdown-complete',
+
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
 } as const;
@@ -55,6 +69,8 @@ export const EVENTS = {
   dataChanged: 'data:changed',
   /** Sent to the capture window each time it is shown, so it clears and focuses its box. */
   captureShown: 'capture:shown',
+  /** The shutdown reminder was clicked: open the ritual. */
+  openShutdown: 'ritual:open-shutdown',
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

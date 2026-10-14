@@ -3,6 +3,7 @@ import {
   isoToLocalTime,
   minutesOfDay,
   toLocalDate,
+  weekdayOf,
   toLocalTime,
 } from '@shared/dates';
 import type { MaintenanceState } from './maintenance';
@@ -33,6 +34,8 @@ export interface Notice {
   key: string;
   title: string;
   body: string;
+  /** What clicking the notification opens. */
+  action?: 'shutdown';
 }
 
 export interface NoticeInput {
@@ -100,4 +103,38 @@ export function dueNotices(input: NoticeInput): Notice[] {
     }
   }
   return notices;
+}
+
+export interface ShutdownNoticeInput {
+  now: Date;
+  enabled: boolean;
+  /** Local HH:MM. */
+  time: string;
+  weekdaysOnly: boolean;
+  doneToday: boolean;
+  quiet: { start: string; end: string };
+  sent: ReadonlySet<string>;
+  /** After this long past the time, the reminder is stale and is skipped. */
+  staleAfterMinutes?: number;
+}
+
+/** The gentle shutdown reminder (PLAN §10): once a day, at the set time, until it is done. */
+export function shutdownNotice(input: ShutdownNoticeInput): Notice | null {
+  const { now } = input;
+  if (!input.enabled || input.doneToday) return null;
+  const today = toLocalDate(now);
+  const day = weekdayOf(today);
+  if (input.weekdaysOnly && (day === 0 || day === 6)) return null;
+  const nowTime = toLocalTime(now);
+  if (inQuietHours(nowTime, input.quiet)) return null;
+  const age = minutesOfDay(nowTime) - minutesOfDay(input.time);
+  if (age < 0 || age > (input.staleAfterMinutes ?? 60)) return null;
+  const key = `shutdown:${today}`;
+  if (input.sent.has(key)) return null;
+  return {
+    key,
+    title: 'Time to wind down',
+    body: 'Take two minutes to close out the day.',
+    action: 'shutdown',
+  };
 }
