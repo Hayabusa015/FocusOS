@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AtlasRouteOverrides } from './atlas';
 import { isValidLocalDate } from './dates';
 
 /**
@@ -320,6 +321,10 @@ export const AppSettings = z.object({
   shutdownReminder: z.boolean(),
   shutdownTime: TimeSchema,
   shutdownWeekdaysOnly: z.boolean(),
+  /** The model and effort the user chose for a route, where it differs from the default. */
+  atlasRoutes: AtlasRouteOverrides,
+  /** A monthly cap on Atlas spending in dollars. Null means no cap. */
+  atlasMonthlyCapUsd: z.number().min(0).max(100000).nullable(),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 export const AppSettingsPatch = AppSettings.partial();
@@ -339,6 +344,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shutdownReminder: true,
   shutdownTime: '15:30',
   shutdownWeekdaysOnly: true,
+  atlasRoutes: {},
+  atlasMonthlyCapUsd: null,
 };
 
 export const SettingsInfo = z.object({
