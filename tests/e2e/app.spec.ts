@@ -32,6 +32,7 @@ async function mainWindow(app: ElectronApplication): Promise<Page> {
 async function launch(
   dataDir: string,
   extraEnv: Record<string, string> = {},
+  options: { keepBriefing?: boolean } = {},
 ): Promise<{ app: ElectronApplication; page: Page; errors: string[] }> {
   const app = await electron.launch({
     cwd: root,
@@ -47,6 +48,15 @@ async function launch(
     if (m.type() === 'error') errors.push(`console: ${m.text()}`);
   });
   await page.waitForLoadState('domcontentloaded');
+  // The morning briefing opens over everything on the first start after 5:00. Most tests are about
+  // something else, so they dismiss it, which also marks it shown for the day.
+  if (!options.keepBriefing) {
+    const due = await page.evaluate(() => window.cortex.rituals.state().then((r) => r.briefingDue));
+    if (due) {
+      await page.getByTestId('briefing').getByRole('button', { name: 'Not now' }).click();
+      await expect(page.getByTestId('briefing')).toHaveCount(0);
+    }
+  }
   return { app, page, errors };
 }
 
@@ -97,11 +107,14 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
       process: 'undefined',
       electron: 'undefined',
       cortexKeys: [
+        'accomplishments',
         'app',
         'areas',
         'capture',
+        'focus',
         'maintenance',
         'onDataChanged',
+        'rituals',
         'search',
         'settings',
         'tasks',
@@ -481,4 +494,180 @@ test('drag a task by its handle to reorder the list', async () => {
   } finally {
     await app.close();
   }
+});
+
+// --- Phase 2: accomplishments and rituals ---------------------------------------------------
+
+const todayDate = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+test('finishing a task celebrates, earns XP and a win; undo takes them back', async () => {
+  const { app, page, errors } = await launch(newDataDir());
+  try {
+    const list = page.getByTestId('daily-list');
+    const add = list.getByPlaceholder('Add to today and press Enter');
+    await add.fill('Grade the quizzes');
+    await add.press('Enter');
+    await list.getByRole('checkbox', { name: 'Complete Grade the quizzes' }).click();
+
+    // 10 for the task, and 10 for emptying the inbox (it was added without an area).
+    await expect(page.getByTestId('celebration-xp')).toHaveText('+20 XP');
+    await expect(page.getByTestId('tile-xp')).toContainText('20');
+    await expect(page.getByTestId('progress-card')).toContainText('Warming up');
+
+    await page.getByRole('navigation').getByRole('button', { name: 'Wins' }).click();
+    await expect(page.getByText('Grade the quizzes', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('xp-today')).toContainText('20 XP today · 1 win');
+    await expect(page.getByTestId('achievement-first-capture')).toHaveAttribute(
+      'data-unlocked',
+      'true',
+    );
+
+    // Ctrl+Z undoes the completion: the XP and the win go away with it.
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('xp-today')).toContainText('0 XP today · 0 wins');
+    const ledger = await page.evaluate(() => window.cortex.accomplishments.summary());
+    expect(ledger.totalXp).toBe(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
+
+test('XP in the database is the sum of the events, and an undo is a negative event', async () => {
+  const dataDir = newDataDir();
+  const { app, page } = await launch(dataDir);
+  try {
+    await page.evaluate(async () => {
+      const t = await window.cortex.tasks.create({ title: 'Big one', size: 'l' });
+      await window.cortex.tasks.complete(t.id);
+      const log = await window.cortex.undo.list();
+      await window.cortex.undo.apply(log[0]!.id);
+      await window.cortex.tasks.complete(t.id);
+    });
+  } finally {
+    await app.close();
+  }
+  const db = new DatabaseSync(join(dataDir, 'cortex.db'));
+  const points = db
+    .prepare("SELECT points FROM xp_events WHERE kind = 'task' ORDER BY rowid")
+    .all() as {
+    points: number;
+  }[];
+  expect(points.map((p) => p.points)).toEqual([40, -40, 40]);
+  db.close();
+});
+
+test('focus session: pick a length, see only the timer, Esc ends it', async () => {
+  const { app, page } = await launch(newDataDir());
+  try {
+    await page.evaluate(() =>
+      window.cortex.tasks.create({
+        title: 'Plan the unit',
+        dueDate: new Date().toISOString().slice(0, 10),
+      }),
+    );
+    await page.getByRole('button', { name: 'Start a focus session' }).click();
+    await page.getByRole('button', { name: '15 min' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    const screen = page.getByTestId('focus-screen');
+    await expect(screen).toBeVisible();
+    await expect(page.getByTestId('focus-timer')).toHaveText(/^1[45]:\d\d$/);
+    expect(await page.evaluate(() => window.cortex.focus.active())).not.toBeNull();
+
+    await page.keyboard.press('Escape');
+    await expect(screen).toHaveCount(0);
+    expect(await page.evaluate(() => window.cortex.focus.active())).toBeNull();
+
+    // Starting again and pressing Done also closes it.
+    await page.getByRole('button', { name: 'Start a focus session' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await screen.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(screen).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('morning briefing: shown once a day, pick your first thing', async () => {
+  test.skip(new Date().getHours() < 5, 'The briefing is offered from 5:00');
+  const dataDir = newDataDir();
+  const first = await launch(dataDir, {}, { keepBriefing: true });
+  try {
+    await first.page.evaluate(async (due) => {
+      for (const title of ['First', 'Second', 'Third']) {
+        await window.cortex.tasks.create({ title, dueDate: due });
+      }
+    }, todayDate());
+    const briefing = first.page.getByTestId('briefing');
+    await expect(briefing).toBeVisible();
+    await briefing.getByRole('button', { name: 'Third' }).click();
+    await expect(briefing).toHaveCount(0);
+    // It is now the one in progress, and first in today's list.
+    const names = await first.page.evaluate(async () => {
+      const today = await window.cortex.today.get();
+      return today.dueToday.map((t) => `${t.title}:${t.status}`);
+    });
+    expect(names[0]).toBe('Third:doing');
+  } finally {
+    await first.app.close();
+  }
+  // Not shown again the same day.
+  const second = await launch(dataDir, {}, { keepBriefing: true });
+  try {
+    await expect(second.page.getByTestId('sidebar-version')).toBeVisible();
+    await expect(second.page.getByTestId('briefing')).toHaveCount(0);
+  } finally {
+    await second.app.close();
+  }
+});
+
+test('shutdown ritual: every open task gets a home, then the day closes', async () => {
+  const dataDir = newDataDir();
+  const { app, page, errors } = await launch(dataDir);
+  try {
+    await page.evaluate(async (due) => {
+      for (const title of ['Alpha', 'Beta', 'Gamma']) {
+        await window.cortex.tasks.create({ title, dueDate: due });
+      }
+    }, todayDate());
+    await page.getByRole('button', { name: 'Shutdown', exact: true }).click();
+    const ritual = page.getByTestId('shutdown');
+    await ritual.getByRole('button', { name: 'Next' }).click(); // wins
+    // Step 2: Next waits until each task has a place.
+    const next = ritual.getByRole('button', { name: 'Next' });
+    await expect(next).toBeDisabled();
+    const card = (title: string) => ritual.getByTestId('unfinished').filter({ hasText: title });
+    await card('Alpha').getByRole('button', { name: 'Tomorrow' }).click();
+    await card('Beta').getByRole('button', { name: 'Someday' }).click();
+    await expect(next).toBeDisabled();
+    await card('Gamma').getByRole('button', { name: 'Done after all' }).click();
+    await expect(next).toBeEnabled();
+    await next.click(); // inbox
+    await next.click(); // tomorrow
+    await expect(ritual.getByText('Alpha')).toBeVisible();
+    await ritual.getByRole('button', { name: 'Close the day' }).click();
+    await expect(page.getByTestId('shutdown-closed')).toContainText(
+      'Everything is captured. You can stop thinking about work.',
+    );
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+  // Nothing open is dated today, and the ritual paid out once.
+  const db = new DatabaseSync(join(dataDir, 'cortex.db'));
+  const open = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM tasks WHERE due_date = ? AND status IN ('inbox','todo','doing') AND deleted_at IS NULL",
+    )
+    .get(todayDate()) as { n: number };
+  expect(open.n).toBe(0);
+  const shutdown = db
+    .prepare("SELECT SUM(points) AS s FROM xp_events WHERE kind = 'shutdown'")
+    .get() as { s: number };
+  expect(shutdown.s).toBe(10);
+  db.close();
 });

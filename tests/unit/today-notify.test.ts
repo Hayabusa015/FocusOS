@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dayArc, formatDuration, nowNext } from '../../src/main/domain/today';
-import { dueNotices, inQuietHours } from '../../src/main/domain/notify';
+import { dueNotices, inQuietHours, shutdownNotice } from '../../src/main/domain/notify';
 
 const at = (h: number, m = 0, day = 14) => new Date(2026, 9, day, h, m);
 const block = (id: string, from: Date, minutes: number, status = 'todo') => ({
@@ -174,5 +174,49 @@ describe('dueNotices', () => {
     expect(run(at(9), [], new Set(eight.map((n) => n.key)), maint as never)).toHaveLength(0);
     // The next day it can fire again.
     expect(run(at(8, 5, 15), [], new Set(eight.map((n) => n.key)), maint as never)).toHaveLength(2);
+  });
+});
+
+describe('shutdownNotice', () => {
+  const base = {
+    enabled: true,
+    time: '15:30',
+    weekdaysOnly: true,
+    doneToday: false,
+    quiet: { start: '21:30', end: '06:30' },
+    sent: new Set<string>(),
+  };
+  // 2026-10-14 is a Wednesday, 2026-10-17 a Saturday.
+  const at = (day: number, h: number, m: number) => new Date(2026, 9, day, h, m);
+
+  it('fires at the set time on a weekday and opens the ritual', () => {
+    const notice = shutdownNotice({ ...base, now: at(14, 15, 31) });
+    expect(notice).toMatchObject({ key: 'shutdown:2026-10-14', action: 'shutdown' });
+  });
+
+  it('waits for the time, and goes stale an hour later', () => {
+    expect(shutdownNotice({ ...base, now: at(14, 15, 29) })).toBeNull();
+    expect(shutdownNotice({ ...base, now: at(14, 16, 30) })).not.toBeNull();
+    expect(shutdownNotice({ ...base, now: at(14, 16, 31) })).toBeNull();
+  });
+
+  it('skips weekends when set to weekdays only', () => {
+    expect(shutdownNotice({ ...base, now: at(17, 15, 31) })).toBeNull();
+    expect(shutdownNotice({ ...base, weekdaysOnly: false, now: at(17, 15, 31) })).not.toBeNull();
+  });
+
+  it('is silent when off, already done, already sent, or in quiet hours', () => {
+    const now = at(14, 15, 31);
+    expect(shutdownNotice({ ...base, enabled: false, now })).toBeNull();
+    expect(shutdownNotice({ ...base, doneToday: true, now })).toBeNull();
+    expect(shutdownNotice({ ...base, sent: new Set(['shutdown:2026-10-14']), now })).toBeNull();
+    expect(
+      shutdownNotice({
+        ...base,
+        time: '22:00',
+        quiet: { start: '21:30', end: '06:30' },
+        now: at(14, 22, 5),
+      }),
+    ).toBeNull();
   });
 });

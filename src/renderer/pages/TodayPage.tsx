@@ -8,7 +8,7 @@ import { minutesText, timeOfIso } from '@/lib/dates';
 import { greeting } from '@/lib/format';
 import type { PageProps } from './types';
 
-export function TodayPage({ areas, openTask, newTask }: PageProps) {
+export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
   const load = useCallback(() => window.cortex.today.get(), []);
   const { data: today, error } = useLive(load, 30_000);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -88,6 +88,7 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
                 {today.counters.tasksTotal} tasks done
                 {today.counters.blocksTotal > 0 &&
                   ` · ${today.counters.blocksDone} of ${today.counters.blocksTotal} blocks`}
+                {` · ${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'} · ${today.counters.xpToday} XP`}
               </span>
             </div>
           </Card>
@@ -120,7 +121,12 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
           <section aria-label="Today's list" className="mb-6">
             <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
             <Card label="Daily task list">
-              <DailyList today={today} areas={areas} openTask={openTask} />
+              <DailyList
+                today={today}
+                areas={areas}
+                openTask={openTask}
+                onFocus={(t) => focus(t.id)}
+              />
             </Card>
           </section>
 

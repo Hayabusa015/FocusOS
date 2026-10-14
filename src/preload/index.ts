@@ -68,6 +68,24 @@ const api: CortexApi = {
     list: () => call(CHANNELS.undoList),
     apply: (id) => call(CHANNELS.undoApply, { id }),
   },
+  accomplishments: {
+    summary: () => call(CHANNELS.summaryGet),
+    wins: () => call(CHANNELS.winsGet),
+    logWin: (text) => call(CHANNELS.winsLog, { text }),
+  },
+  focus: {
+    active: () => call(CHANNELS.focusActive),
+    start: (taskId, plannedMinutes) => call(CHANNELS.focusStart, { taskId, plannedMinutes }),
+    finish: (id, completed) => call(CHANNELS.focusFinish, { id, completed }),
+  },
+  rituals: {
+    state: () => call(CHANNELS.ritualsState),
+    briefing: () => call(CHANNELS.ritualsBriefing),
+    briefingShown: () => call(CHANNELS.ritualsBriefingShown),
+    shutdown: () => call(CHANNELS.ritualsShutdown),
+    completeShutdown: () => call(CHANNELS.ritualsShutdownComplete),
+    onOpenShutdown: (listener) => subscribe(EVENTS.openShutdown, () => listener()),
+  },
   settings: {
     get: () => call(CHANNELS.settingsGet),
     update: (patch) => call(CHANNELS.settingsUpdate, patch),

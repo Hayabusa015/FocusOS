@@ -10,6 +10,7 @@ import type {
 import { dayArc, nowNext } from '../domain/today';
 import type { TimedBlock } from '../domain/today';
 import type { Ctx } from './context';
+import { winsOn, xpToday } from './ledger';
 import { listMaintenance, searchMaintenance } from './maintenance';
 import {
   countCompletedOn,
@@ -73,6 +74,8 @@ export function getToday(ctx: Ctx, window: DayWindow): TodayView {
     counters: {
       tasksDone: doneToday,
       tasksTotal: dueToday.length + doneToday,
+      winsToday: winsOn(ctx, today).length,
+      xpToday: xpToday(ctx),
       blocksDone: blocks.filter((b) => b.status === 'done').length,
       blocksTotal: blocks.length,
     },

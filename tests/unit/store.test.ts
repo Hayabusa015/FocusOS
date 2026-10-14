@@ -339,6 +339,22 @@ describe('manual order and steps', () => {
   });
 });
 
+describe('moving a block with its day', () => {
+  it('a block today for a task due tomorrow moves to tomorrow when rescheduled to tomorrow', () => {
+    const t = store.createTask({
+      title: 'Odd one',
+      dueDate: '2026-10-15',
+      block: { date: '2026-10-14', time: '14:00', minutes: 30 },
+      areaId: area('Home').id,
+    }).result;
+    expect(new Date(t.scheduledStart!).getDate()).toBe(14);
+    store.rescheduleTask(t.id, '2026-10-15');
+    const moved = store.getTask(t.id)!;
+    expect(new Date(moved.scheduledStart!).getDate()).toBe(15);
+    expect(new Date(moved.scheduledStart!).getHours()).toBe(14);
+  });
+});
+
 describe('views', () => {
   it('Today lists due and carried-forward tasks, and counts what is done', () => {
     const due = store.createTask({ title: 'Due today', dueDate: '2026-10-14' });

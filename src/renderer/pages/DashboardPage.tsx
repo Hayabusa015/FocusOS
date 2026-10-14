@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
-import { Card, ErrorNote, Ring, SectionTitle, buttonPrimary } from '@/components/ui';
+import { Card, ErrorNote, Ring, SectionTitle, buttonPrimary, buttonQuiet } from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { useLive } from '@/hooks/useLive';
 import { areaColor, indexAreas } from '@/lib/areas';
 import { friendlyDate, minutesText } from '@/lib/dates';
 import { greeting } from '@/lib/format';
 import type { PageProps } from './types';
+import { LevelBar, StreakDots } from './WinsPage';
 
 function Tile({
   label,
@@ -36,19 +37,20 @@ function Tile({
 }
 
 /** The home screen: where the day stands, today's list, what is coming, and each area at a glance. */
-export function DashboardPage({ areas, openTask, newTask, go }: PageProps) {
+export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps) {
   const loadToday = useCallback(() => window.cortex.today.get(), []);
   const loadUpcoming = useCallback(() => window.cortex.upcoming.get(), []);
   const loadInbox = useCallback(() => window.cortex.tasks.list({ view: 'inbox' }), []);
   const loadMaintenance = useCallback(() => window.cortex.maintenance.list(), []);
+  const loadSummary = useCallback(() => window.cortex.accomplishments.summary(), []);
   const { data: today, error } = useLive(loadToday, 30_000);
   const { data: upcoming } = useLive(loadUpcoming);
   const { data: inbox } = useLive(loadInbox);
   const { data: maintenance } = useLive(loadMaintenance);
+  const { data: summary } = useLive(loadSummary);
   const byId = indexAreas(areas);
   const now = new Date();
 
-  const weekDone = areas.reduce((sum, a) => sum + a.doneThisWeek, 0);
   const comingUp = (upcoming?.days ?? [])
     .filter((d) => d.date !== null && d.date !== today?.date)
     .flatMap((d) => d.tasks.map((t) => ({ task: t, date: d.date as string })))
@@ -66,9 +68,14 @@ export function DashboardPage({ areas, openTask, newTask, go }: PageProps) {
             {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <button className={buttonPrimary} onClick={() => newTask()}>
-          Add task
-        </button>
+        <div className="flex gap-2">
+          <button className={buttonQuiet} onClick={() => focus(null)}>
+            Start a focus session
+          </button>
+          <button className={buttonPrimary} onClick={() => newTask()}>
+            Add task
+          </button>
+        </div>
       </header>
       <ErrorNote message={error} />
 
@@ -104,8 +111,30 @@ export function DashboardPage({ areas, openTask, newTask, go }: PageProps) {
               note="to sort"
               onClick={() => go({ page: 'inbox' })}
             />
-            <Tile testId="tile-week" label="Done this week" value={String(weekDone)} />
+            <Tile
+              testId="tile-xp"
+              label="XP today"
+              value={String(today.counters.xpToday)}
+              note={`${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'}`}
+              onClick={() => go({ page: 'wins' })}
+            />
           </div>
+
+          {summary && (
+            <button
+              data-testid="progress-card"
+              onClick={() => go({ page: 'wins' })}
+              className="mb-4 grid w-full gap-5 rounded-card border border-line bg-surface p-5 text-left transition-colors hover:bg-raised sm:grid-cols-2"
+            >
+              <LevelBar summary={summary} />
+              <div className="flex flex-col justify-center gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Active days this week
+                </span>
+                <StreakDots summary={summary} />
+              </div>
+            </button>
+          )}
 
           <Card label="Now and next" className="mb-4">
             {today.nowBlock ? (
@@ -133,7 +162,12 @@ export function DashboardPage({ areas, openTask, newTask, go }: PageProps) {
           <div className="mb-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
             <Card label="Today's list">
               <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
-              <DailyList today={today} areas={areas} openTask={openTask} />
+              <DailyList
+                today={today}
+                areas={areas}
+                openTask={openTask}
+                onFocus={(t) => focus(t.id)}
+              />
             </Card>
 
             <div className="space-y-4">

@@ -4,11 +4,19 @@ import type {
   AreaUpdate,
   AppSettingsPatch,
   CaptureResult,
+  BriefingView,
   DataChanged,
+  FocusResult,
+  FocusSession,
+  GamificationSummary,
   MaintenanceCreate,
   MaintenanceItem,
   MaintenanceTemplate,
   MaintenanceUpdate,
+  RitualState,
+  ShutdownView,
+  Win,
+  WinsView,
   SearchResults,
   SettingsInfo,
   Task,
@@ -76,6 +84,26 @@ export interface CortexApi {
   undo: {
     list(): Promise<UndoEntry[]>;
     apply(id: string): Promise<{ summary: string } | null>;
+  };
+  accomplishments: {
+    summary(): Promise<GamificationSummary>;
+    wins(): Promise<WinsView>;
+    logWin(text: string): Promise<Win>;
+  };
+  focus: {
+    active(): Promise<FocusSession | null>;
+    start(taskId: string | null, plannedMinutes: number): Promise<FocusSession>;
+    /** `completed` false is Esc: the session ends and earns nothing. */
+    finish(id: string, completed: boolean): Promise<FocusResult>;
+  };
+  rituals: {
+    state(): Promise<RitualState>;
+    briefing(): Promise<BriefingView>;
+    briefingShown(): Promise<void>;
+    shutdown(): Promise<ShutdownView>;
+    completeShutdown(): Promise<{ xp: number }>;
+    /** The shutdown reminder notification was clicked. */
+    onOpenShutdown(listener: () => void): () => void;
   };
   settings: {
     get(): Promise<SettingsInfo>;

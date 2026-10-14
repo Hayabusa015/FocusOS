@@ -249,6 +249,8 @@ export const TodayView = z.object({
     tasksTotal: z.number().int(),
     blocksDone: z.number().int(),
     blocksTotal: z.number().int(),
+    winsToday: z.number().int(),
+    xpToday: z.number().int(),
   }),
 });
 export type TodayView = z.infer<typeof TodayView>;
@@ -288,6 +290,12 @@ export const UndoApply = z.object({ id: Id });
 export const DataChanged = z.object({
   logId: z.string().nullable(),
   summary: z.string().nullable(),
+  /** XP earned by this change (negative for an undo). Absent when nothing was earned. */
+  xp: z.number().int().optional(),
+  /** Achievements this change unlocked. */
+  unlocked: z.array(z.object({ key: z.string(), title: z.string() })).optional(),
+  /** A big moment: a large task, a frog, or a cleared day. */
+  big: z.boolean().optional(),
 });
 export type DataChanged = z.infer<typeof DataChanged>;
 
@@ -302,6 +310,16 @@ export const AppSettings = z.object({
   /** An Electron accelerator such as `Control+Alt+N`. */
   captureHotkey: z.string().min(1).max(60),
   keepRunningInTray: z.boolean(),
+  /** The check animation and confetti when something is finished. */
+  celebrations: z.boolean(),
+  /** A soft sound with the celebration. */
+  sound: z.boolean(),
+  /** Offer the morning briefing on the first open after 5:00. */
+  morningBriefing: z.boolean(),
+  /** A gentle notification to start the shutdown ritual. */
+  shutdownReminder: z.boolean(),
+  shutdownTime: TimeSchema,
+  shutdownWeekdaysOnly: z.boolean(),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 export const AppSettingsPatch = AppSettings.partial();
@@ -315,6 +333,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   captureHotkey: 'Control+Alt+N',
   keepRunningInTray: true,
+  celebrations: true,
+  sound: true,
+  morningBriefing: true,
+  shutdownReminder: true,
+  shutdownTime: '15:30',
+  shutdownWeekdaysOnly: true,
 };
 
 export const SettingsInfo = z.object({
@@ -325,3 +349,122 @@ export const SettingsInfo = z.object({
   backupCount: z.number().int(),
 });
 export type SettingsInfo = z.infer<typeof SettingsInfo>;
+
+// --- Accomplishments (Phase 2) -----------------------------------------------------------
+
+export const StreakDay = z.object({
+  date: z.string(),
+  wins: z.number().int(),
+  active: z.boolean(),
+});
+
+export const GamificationSummary = z.object({
+  totalXp: z.number().int(),
+  /** 0 until the first 100 XP. */
+  level: z.number().int(),
+  xpIntoLevel: z.number().int(),
+  xpForNext: z.number().int(),
+  progress: z.number().min(0).max(1),
+  xpToday: z.number().int(),
+  winsToday: z.number().int(),
+  /** "Active days in the last 7": a day is active with 3 or more wins. */
+  streak: z.object({
+    active: z.number().int(),
+    of: z.literal(7),
+    /** Wins that make a day active. */
+    threshold: z.number().int(),
+    days: z.array(StreakDay),
+  }),
+  achievementsUnlocked: z.number().int(),
+  achievementsTotal: z.number().int(),
+});
+export type GamificationSummary = z.infer<typeof GamificationSummary>;
+
+export const Win = z.object({
+  id: Id,
+  text: z.string(),
+  occurredAt: z.string(),
+  /** The task or maintenance entry this win records. Null for a win you logged yourself. */
+  refId: z.string().nullable(),
+});
+export type Win = z.infer<typeof Win>;
+
+export const AchievementView = z.object({
+  key: z.string(),
+  title: z.string(),
+  description: z.string(),
+  unlockedAt: z.string().nullable(),
+});
+export type AchievementView = z.infer<typeof AchievementView>;
+
+export const WinsView = z.object({
+  summary: GamificationSummary,
+  todayWins: z.array(Win),
+  /** The last 7 days, oldest first. */
+  week: z.array(
+    z.object({
+      date: z.string(),
+      wins: z.number().int(),
+      xp: z.number().int(),
+      active: z.boolean(),
+    }),
+  ),
+  /** Wins from the last 7 days before today, newest day first. */
+  recent: z.array(z.object({ date: z.string(), wins: z.array(Win) })),
+  achievements: z.array(AchievementView),
+});
+export type WinsView = z.infer<typeof WinsView>;
+
+export const WinLog = z.object({ text: z.string().trim().min(1).max(300) });
+
+export const FocusSession = z.object({
+  id: Id,
+  taskId: z.string().nullable(),
+  taskTitle: z.string().nullable(),
+  areaId: z.string().nullable(),
+  plannedMinutes: z.number().int(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+  completed: z.boolean(),
+});
+export type FocusSession = z.infer<typeof FocusSession>;
+
+export const FocusStart = z.object({
+  taskId: Id.nullable().optional(),
+  plannedMinutes: z.number().int().min(1).max(180),
+});
+export const FocusFinish = z.object({ id: Id, completed: z.boolean() });
+export const FocusResult = z.object({ session: FocusSession, xp: z.number().int() });
+export type FocusResult = z.infer<typeof FocusResult>;
+
+export const RitualState = z.object({
+  /** The first open after 5:00 today and the briefing has not been shown. */
+  briefingDue: z.boolean(),
+  shutdownDoneToday: z.boolean(),
+});
+export type RitualState = z.infer<typeof RitualState>;
+
+export const BriefingView = z.object({
+  date: z.string(),
+  dueToday: z.array(Task),
+  carryForward: z.array(Task),
+  maintenance: z.array(MaintenanceItem),
+  inbox: z.number().int(),
+  /** Up to three tasks to pick a first thing from. */
+  picks: z.array(Task),
+});
+export type BriefingView = z.infer<typeof BriefingView>;
+
+export const ShutdownView = z.object({
+  date: z.string(),
+  wins: z.array(Win),
+  xpToday: z.number().int(),
+  /** Open tasks dated today (due today, or with a time block today). */
+  unfinished: z.array(Task),
+  inbox: z.number().int(),
+  tomorrowDate: z.string(),
+  /** Tomorrow's first three tasks. */
+  tomorrow: z.array(Task),
+  doneToday: z.boolean(),
+});
+export type ShutdownView = z.infer<typeof ShutdownView>;

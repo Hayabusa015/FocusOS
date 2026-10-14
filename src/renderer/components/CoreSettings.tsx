@@ -105,6 +105,58 @@ export function CoreSettings() {
         )}
       </Card>
 
+      <Card label="Celebrations and rituals" className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold">Celebrations and rituals</h2>
+        {s && (
+          <>
+            <Field label="Celebrate finishing things (the +XP pill and confetti)">
+              <Switch
+                label="Celebrations"
+                checked={s.celebrations}
+                onChange={(next) => update({ celebrations: next })}
+              />
+            </Field>
+            <Field label="A soft sound with it">
+              <Switch
+                label="Sound"
+                checked={s.sound}
+                onChange={(next) => update({ sound: next })}
+              />
+            </Field>
+            <Field label="Morning briefing on the first open after 5:00">
+              <Switch
+                label="Morning briefing"
+                checked={s.morningBriefing}
+                onChange={(next) => update({ morningBriefing: next })}
+              />
+            </Field>
+            <Field label="Shutdown reminder">
+              <Switch
+                label="Shutdown reminder"
+                checked={s.shutdownReminder}
+                onChange={(next) => update({ shutdownReminder: next })}
+              />
+            </Field>
+            <Field label="Shutdown time">
+              <input
+                type="time"
+                aria-label="Shutdown time"
+                className={`${inputClass} w-32!`}
+                value={s.shutdownTime}
+                onChange={(e) => e.target.value && update({ shutdownTime: e.target.value })}
+              />
+            </Field>
+            <Field label="Weekdays only">
+              <Switch
+                label="Weekdays only"
+                checked={s.shutdownWeekdaysOnly}
+                onChange={(next) => update({ shutdownWeekdaysOnly: next })}
+              />
+            </Field>
+          </>
+        )}
+      </Card>
+
       <Card label="Quick capture" className="mb-6">
         <h2 className="mb-2 text-lg font-semibold">Quick capture</h2>
         {s && (

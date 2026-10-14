@@ -15,7 +15,13 @@ import type { Db } from './connection';
  */
 export type Row = Record<string, string | number | null>;
 
-export const UNDOABLE_TABLES = ['areas', 'tasks', 'maintenance_items', 'maintenance_log'] as const;
+export const UNDOABLE_TABLES = [
+  'areas',
+  'tasks',
+  'maintenance_items',
+  'maintenance_log',
+  'wins',
+] as const;
 export type UndoableTable = (typeof UNDOABLE_TABLES)[number];
 
 const InverseOps = z.array(
@@ -41,7 +47,27 @@ export interface Ctx {
   newId(): string;
   /** Set while a mutation is running, so a nested one fails loudly instead of corrupting the log. */
   inMutation: boolean;
+  /**
+   * Runs inside every change and every undo, in the same transaction, to bring XP, wins and
+   * achievements in line with the data (db/ledger.ts `settle`).
+   */
+  afterChange?: () => void;
+  /** True while an undo is being applied: the ledger may only take points back, never award. */
+  undoing: boolean;
+  /** What the last changes earned. The screen reads it once to celebrate, then clears it. */
+  award: Award;
 }
+
+export interface Award {
+  /** Net XP change since it was last taken (negative after an undo). */
+  xp: number;
+  /** Achievement keys unlocked since it was last taken. */
+  unlocked: string[];
+  /** A big moment: a large task, a frog, or a cleared day. */
+  big: boolean;
+}
+
+export const noAward = (): Award => ({ xp: 0, unlocked: [], big: false });
 
 export function createCtx(
   db: Db,
@@ -55,6 +81,8 @@ export function createCtx(
     today: () => toLocalDate(clock()),
     newId,
     inMutation: false,
+    undoing: false,
+    award: noAward(),
   };
 }
 
@@ -117,6 +145,7 @@ export function mutate<T>(
   try {
     const tx = new Tx(ctx);
     const { result, summary, payload } = fn(tx);
+    ctx.afterChange?.();
     const logId = ctx.newId();
     const stamp = ctx.nowIso();
     run(
@@ -174,6 +203,12 @@ export function undoEntry(ctx: Ctx, id: string): UndoResult | null {
   ctx.db.exec('BEGIN IMMEDIATE');
   try {
     for (const op of [...ops].reverse()) applyOp(ctx, op);
+    ctx.undoing = true;
+    try {
+      ctx.afterChange?.();
+    } finally {
+      ctx.undoing = false;
+    }
     run(
       ctx,
       'UPDATE action_log SET undone_at = ?, updated_at = ? WHERE id = ?',

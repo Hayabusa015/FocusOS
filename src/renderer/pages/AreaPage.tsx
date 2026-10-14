@@ -8,7 +8,7 @@ import { toggleTask } from '@/lib/actions';
 import { areaColor } from '@/lib/areas';
 import type { PageProps } from './types';
 
-export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: string }) {
+export function AreaPage({ areas, areaId, openTask, focus }: PageProps & { areaId: string }) {
   const area = areas.find((a) => a.id === areaId) ?? null;
   const load = useCallback(() => window.cortex.tasks.list({ view: 'area', areaId }), [areaId]);
   const { data: tasks, error } = useLive(load);
@@ -41,6 +41,7 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
         areas={areas}
         showArea={false}
         onOpen={openTask}
+        onFocus={(t) => focus(t.id)}
         onError={setActionError}
         emptyText="Nothing here."
         trailing={

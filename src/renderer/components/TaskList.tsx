@@ -21,6 +21,8 @@ interface Props {
   addPlaceholder?: string;
   /** Extra controls on the right of a main task. */
   trailing?(task: Task): React.ReactNode;
+  /** Shows a Focus button on open tasks. */
+  onFocus?(task: Task): void;
   /** Put the extra controls under the title instead of beside it (long controls, narrow lists). */
   trailingBelow?: boolean;
   /** Lets a page add its own keys on a focused task (the Inbox files by number). */
@@ -45,6 +47,7 @@ export function TaskList({
   onAdd,
   addPlaceholder = 'Add a task and press Enter',
   trailing,
+  onFocus,
   trailingBelow = false,
   onTaskKey,
   emptyText,
@@ -196,6 +199,16 @@ export function TaskList({
               )}
             </span>
           </button>
+          {!done && onFocus && (
+            <button
+              className="rounded px-1.5 text-xs text-ink-muted opacity-0 hover:bg-line hover:text-ink focus:opacity-100 group-hover:opacity-100"
+              title="Focus on this"
+              aria-label={`Focus on ${task.title}`}
+              onClick={() => onFocus(task)}
+            >
+              ◎
+            </button>
+          )}
           {!done && depth === 0 && index > 0 && task.subtaskCount === 0 && (
             <button
               className="rounded px-1.5 text-xs text-ink-muted opacity-0 hover:bg-line hover:text-ink focus:opacity-100 group-hover:opacity-100"
