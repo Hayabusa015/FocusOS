@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { JustUpdatedCard } from '@/components/JustUpdatedCard';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { useUpdaterState } from '@/hooks/useUpdaterState';
@@ -15,6 +15,10 @@ const NAV: { id: PageId; label: string }[] = [
 export function App() {
   const [page, setPage] = useState<PageId>('today');
   const updater = useUpdaterState();
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    void window.cortex.app.info().then((info) => setVersion(info.version));
+  }, []);
 
   return (
     <div className="flex h-full">
@@ -40,6 +44,9 @@ export function App() {
             </li>
           ))}
         </ul>
+        <p data-testid="sidebar-version" className="mt-auto px-3 pt-4 text-xs text-ink-muted">
+          {version ? `Version ${version}` : ''}
+        </p>
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto p-10">

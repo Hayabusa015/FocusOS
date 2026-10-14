@@ -1,17 +1,23 @@
 /// <reference lib="dom" />
 import type {} from '../../src/renderer/global';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { _electron as electron, expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
+import { nextPatchVersion } from '../../src/main/updater-fake';
 
 const root = resolve(__dirname, '../..');
 // The `electron` package exports the path to the Electron binary.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const electronPath = require('electron') as unknown as string;
+// The versions under test come from package.json, so a version bump never breaks the tests.
+const VERSION = (
+  JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }
+).version;
+const NEXT = nextPatchVersion(VERSION);
 const dataDirs: string[] = [];
 
 async function launch(
@@ -46,8 +52,9 @@ test('opens on an empty Today page and shows the installed version in Settings',
     await expect(page.getByText('Nothing here yet')).toBeVisible();
     await page.screenshot({ path: 'test-results/today.png' });
 
+    await expect(page.getByTestId('sidebar-version')).toHaveText(`Version ${VERSION}`);
     await page.getByRole('button', { name: 'Settings' }).click();
-    await expect(page.getByTestId('installed-version')).toHaveText('0.0.1');
+    await expect(page.getByTestId('installed-version')).toHaveText(VERSION);
     // A development build never checks for updates, and says why.
     await expect(page.getByTestId('update-status')).toHaveText('Off');
     await expect(page.getByText('Updates are checked only in the installed app.')).toBeVisible();
@@ -103,10 +110,10 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
     expect(policy.violations).toContain('connect-src');
 
     const info = await page.evaluate(() => window.cortex.app.info());
-    expect(info).toMatchObject({ name: 'Cortex', version: '0.0.1', dataDir, isPackaged: false });
+    expect(info).toMatchObject({ name: 'Cortex', version: VERSION, dataDir, isPackaged: false });
 
     const settings = await page.evaluate(() => window.cortex.updater.getState());
-    expect(settings).toMatchObject({ status: 'disabled', currentVersion: '0.0.1' });
+    expect(settings).toMatchObject({ status: 'disabled', currentVersion: VERSION });
 
     // A request that does not match its schema is refused by the main process.
     const refused = await page.evaluate(() =>
@@ -133,7 +140,7 @@ test('creates its database on first run and remembers the version that ran', asy
   const row = db.prepare("SELECT value FROM settings WHERE key = 'app.lastRunVersion'").get() as {
     value: string;
   };
-  expect(JSON.parse(row.value)).toBe('0.0.1');
+  expect(JSON.parse(row.value)).toBe(VERSION);
   const versions = db.prepare('SELECT version FROM schema_migrations').all();
   expect(versions.length).toBeGreaterThan(0);
   db.close();
@@ -181,7 +188,7 @@ test('the update flow: banner, safe notes, Later, download, backup, restart', as
     await page.getByRole('button', { name: 'Check for updates' }).click();
 
     const banner = page.getByRole('status', { name: 'Update' });
-    await expect(banner.getByText('Cortex 0.0.2 is available.')).toBeVisible();
+    await expect(banner.getByText(`Cortex ${NEXT} is available.`)).toBeVisible();
     await page.screenshot({ path: 'test-results/update-available.png' });
 
     // What's new: formatted, with nothing dangerous surviving.
@@ -199,16 +206,16 @@ test('the update flow: banner, safe notes, Later, download, backup, restart', as
     // Later hides it for 24 hours; Settings still reports it.
     await banner.getByRole('button', { name: 'Later' }).click();
     await expect(banner).toHaveCount(0);
-    await expect(page.getByText('0.0.2', { exact: true })).toBeVisible();
+    await expect(page.getByText(NEXT, { exact: true })).toBeVisible();
     // A manual check brings it back.
     await page.getByRole('button', { name: 'Check for updates' }).click();
-    await expect(banner.getByText('Cortex 0.0.2 is available.')).toBeVisible();
+    await expect(banner.getByText(`Cortex ${NEXT} is available.`)).toBeVisible();
 
     // Update now: progress, then ready to restart, and the data is backed up before install.
     await banner.getByRole('button', { name: 'Update now' }).click();
-    await expect(banner.getByText('Cortex 0.0.2 is ready to install.')).toBeVisible();
+    await expect(banner.getByText(`Cortex ${NEXT} is ready to install.`)).toBeVisible();
     await page.screenshot({ path: 'test-results/update-ready.png' });
-    const backup = join(dataDir, 'backups', 'pre-update-0.0.1-to-0.0.2.db');
+    const backup = join(dataDir, 'backups', `pre-update-${VERSION}-to-${NEXT}.db`);
     expect(existsSync(backup)).toBe(true);
     const copy = new DatabaseSync(backup);
     expect(copy.prepare("SELECT value FROM settings WHERE key = 'test.marker'").get()).toEqual({

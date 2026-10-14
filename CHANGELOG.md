@@ -3,6 +3,12 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.0.2] - 2026-10-14
+
+- The installed version now shows at the bottom of the sidebar.
+- This is also the first real test of Cortex updating itself: if you are reading this in the
+  "What's new" panel, the update worked.
+
 ## [0.0.1] - 2026-10-14
 
 First build of Cortex: the foundation everything else sits on.
