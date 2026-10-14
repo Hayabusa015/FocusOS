@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Card, ErrorNote, Ring, SectionTitle, buttonPrimary, buttonQuiet } from '@/components/ui';
+import { ErrorNote, SectionTitle, Sheet, buttonPrimary, buttonQuiet } from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { useLive } from '@/hooks/useLive';
 import { areaColor, indexAreas } from '@/lib/areas';
@@ -8,30 +8,37 @@ import { greeting } from '@/lib/format';
 import type { PageProps } from './types';
 import { LevelBar, StreakDots } from './WinsPage';
 
-function Tile({
+/** One number of the day. The first one is large; the rest sit beside it, divided by a rule. */
+function Figure({
   label,
   value,
   note,
   onClick,
   testId,
+  big = false,
 }: {
   label: string;
   value: string;
   note?: string;
   onClick?: () => void;
   testId: string;
+  big?: boolean;
 }) {
   return (
     <button
       data-testid={testId}
       onClick={onClick}
-      className="flex flex-col items-start justify-start rounded-card border border-line bg-surface p-4 text-left transition-colors hover:bg-raised"
+      className={`flex flex-col items-start text-left transition-colors hover:text-accent-soft ${
+        big ? 'pr-8' : 'border-l border-line px-6'
+      }`}
     >
-      <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        {label}
+      <span
+        className={`tabular-nums font-bold tracking-tight ${big ? 'text-6xl leading-none' : 'text-3xl'}`}
+      >
+        {value}
       </span>
-      <span className="mt-1 block text-3xl font-semibold tracking-tight">{value}</span>
-      {note && <span className="mt-0.5 block text-xs text-ink-muted">{note}</span>}
+      <span className="mt-2 text-sm font-medium">{label}</span>
+      {note && <span className="text-xs text-ink-muted">{note}</span>}
     </button>
   );
 }
@@ -63,7 +70,7 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
     <div>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{greeting(now)}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{greeting(now)}</h1>
           <p className="mt-1 text-ink-muted">
             {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
@@ -81,10 +88,11 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
 
       {today && (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Tile
+          <div className="mb-8 flex flex-wrap items-end gap-y-4">
+            <Figure
+              big
               testId="tile-today"
-              label="Done today"
+              label="done today"
               value={`${today.counters.tasksDone} of ${today.counters.tasksTotal}`}
               note={
                 today.arc.phase === 'during'
@@ -93,9 +101,9 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
               }
               onClick={() => go({ page: 'today' })}
             />
-            <Tile
+            <Figure
               testId="tile-due"
-              label="Still to do today"
+              label="still to do"
               value={String(today.dueToday.length)}
               note={
                 today.carryForward.length > 0
@@ -104,14 +112,14 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
               }
               onClick={() => go({ page: 'today' })}
             />
-            <Tile
+            <Figure
               testId="tile-inbox"
-              label="In your inbox"
+              label="in your inbox"
               value={String(inbox?.length ?? 0)}
               note="to sort"
               onClick={() => go({ page: 'inbox' })}
             />
-            <Tile
+            <Figure
               testId="tile-xp"
               label="XP today"
               value={String(today.counters.xpToday)}
@@ -120,23 +128,11 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
             />
           </div>
 
-          {summary && (
-            <button
-              data-testid="progress-card"
-              onClick={() => go({ page: 'wins' })}
-              className="mb-4 grid w-full gap-5 rounded-card border border-line bg-surface p-5 text-left transition-colors hover:bg-raised sm:grid-cols-2"
-            >
-              <LevelBar summary={summary} />
-              <div className="flex flex-col justify-center gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  Active days this week
-                </span>
-                <StreakDots summary={summary} />
-              </div>
-            </button>
-          )}
-
-          <Card label="Now and next" className="mb-4">
+          <div
+            aria-label="Now and next"
+            role="region"
+            className="mb-8 border-l-[3px] border-accent pl-4"
+          >
             {today.nowBlock ? (
               <p>
                 <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
@@ -151,16 +147,16 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
               <p className="text-ink-muted">Nothing scheduled right now.</p>
             )}
             {today.nextBlock && (
-              <p className="mt-2 text-sm text-ink-muted">
+              <p className="mt-1 text-sm text-ink-muted">
                 <span className="text-xs font-semibold uppercase tracking-wide">Next</span>
                 <span className="ml-3 text-ink">{today.nextBlock.title}</span>
                 <span className="ml-3">in {minutesText(today.nextBlock.startsInMinutes)}</span>
               </p>
             )}
-          </Card>
+          </div>
 
-          <div className="mb-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <Card label="Today's list">
+          <div className="mb-8 grid gap-10 lg:grid-cols-[3fr_2fr]">
+            <Sheet label="Today's list">
               <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
               <DailyList
                 today={today}
@@ -168,19 +164,19 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                 openTask={openTask}
                 onFocus={(t) => focus(t.id)}
               />
-            </Card>
+            </Sheet>
 
-            <div className="space-y-4">
-              <Card label="Coming up">
+            <div className="space-y-8">
+              <section aria-label="Coming up">
                 <SectionTitle>Coming up</SectionTitle>
                 {comingUp.length === 0 ? (
                   <p className="text-sm text-ink-muted">Nothing due in the next two weeks.</p>
                 ) : (
-                  <ul className="space-y-1">
+                  <ul className="divide-y divide-line border-y border-line">
                     {comingUp.map(({ task, date }) => (
                       <li key={task.id}>
                         <button
-                          className="flex w-full items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-raised"
+                          className="flex w-full items-baseline justify-between gap-3 py-2 text-left text-sm hover:text-accent-soft"
                           onClick={() => openTask(task.id)}
                         >
                           <span className="truncate">{task.title}</span>
@@ -192,18 +188,18 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                     ))}
                   </ul>
                 )}
-              </Card>
+              </section>
 
-              <Card label="Home maintenance">
+              <section aria-label="Home maintenance">
                 <SectionTitle>Home maintenance</SectionTitle>
                 {needsAttention.length === 0 ? (
                   <p className="text-sm text-ink-muted">Nothing is due soon.</p>
                 ) : (
-                  <ul className="space-y-1">
+                  <ul className="divide-y divide-line border-y border-line">
                     {needsAttention.map((m) => (
                       <li key={m.id}>
                         <button
-                          className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-raised"
+                          className="w-full py-2 text-left hover:text-accent-soft"
                           onClick={() => go({ page: 'maintenance' })}
                         >
                           <span className="block text-sm">{m.name}</span>
@@ -213,7 +209,21 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                     ))}
                   </ul>
                 )}
-              </Card>
+              </section>
+
+              {summary && (
+                <button
+                  data-testid="progress-card"
+                  onClick={() => go({ page: 'wins' })}
+                  className="grid w-full gap-4 border-t border-line pt-4 text-left"
+                >
+                  <LevelBar summary={summary} />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">Active days this week</span>
+                    <StreakDots summary={summary} />
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </>
@@ -221,25 +231,18 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
 
       <section aria-label="Areas">
         <SectionTitle>Areas</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 lg:grid-cols-4">
           {areas.map((area) => (
             <button
               key={area.id}
               data-testid={`area-card-${area.name}`}
-              className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 text-left transition-colors hover:bg-raised"
+              className="border-l-[3px] py-2 pl-3 text-left transition-colors hover:bg-raised"
+              style={{ borderLeftColor: areaColor(byId.get(area.id)) }}
               onClick={() => go({ page: 'area', areaId: area.id })}
             >
-              <Ring
-                size={40}
-                done={area.doneThisWeek}
-                total={area.doneThisWeek + area.openCount}
-                color={areaColor(byId.get(area.id))}
-              />
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{area.name}</span>
-                <span className="text-xs text-ink-muted">
-                  {area.openCount} open · {area.doneThisWeek} done this week
-                </span>
+              <span className="block truncate text-sm font-semibold">{area.name}</span>
+              <span className="text-xs text-ink-muted">
+                {area.openCount} open · {area.doneThisWeek} done this week
               </span>
             </button>
           ))}

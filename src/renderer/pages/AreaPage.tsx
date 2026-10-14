@@ -89,7 +89,7 @@ export function AreaPage({ areas, areaId, openTask, focus }: PageProps & { areaI
       <header className="mb-6 flex items-center gap-4">
         <Ring done={done.length} total={total} color={areaColor(area)} />
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{area.name}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{area.name}</h1>
           <p className="mt-1 text-ink-muted" data-testid="area-progress">
             {done.length} done this week · {todo.length + doing.length} still open
           </p>

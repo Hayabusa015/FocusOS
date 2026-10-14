@@ -67,7 +67,7 @@ export function WinsPage() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Wins</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Wins</h1>
         <p className="mt-1 text-ink-muted">Everything you have gotten done, counted.</p>
       </header>
       <ErrorNote message={error ?? actionError} />
@@ -186,32 +186,32 @@ export function WinsPage() {
           Achievements
         </SectionTitle>
         {achievements.length === 0 && <Empty title="No achievements yet" />}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-x-8 sm:grid-cols-2">
           {achievements.map((a) => (
-            <div
+            <li
               key={a.key}
               data-testid={`achievement-${a.key}`}
               data-unlocked={a.unlockedAt !== null}
-              className={`rounded-card border p-4 ${a.unlockedAt ? 'border-accent bg-surface' : 'border-line bg-surface opacity-60'}`}
+              className={`flex gap-3 border-t border-line py-3 ${a.unlockedAt ? '' : 'opacity-55'}`}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className={`grid size-6 place-items-center rounded-full text-xs ${a.unlockedAt ? 'bg-accent text-accent-ink' : 'bg-line text-ink-muted'}`}
-                >
-                  {a.unlockedAt ? '✓' : '·'}
-                </span>
-                <span className="font-medium">{a.title}</span>
+              <span
+                aria-hidden
+                className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs ${a.unlockedAt ? 'bg-accent text-accent-ink' : 'bg-line text-ink-muted'}`}
+              >
+                {a.unlockedAt ? '✓' : '·'}
+              </span>
+              <div>
+                <p className="font-medium">{a.title}</p>
+                <p className="text-sm text-ink-muted">{a.description}</p>
+                {a.unlockedAt && (
+                  <p className="mt-0.5 text-xs text-accent-soft">
+                    Unlocked {friendlyDate(isoToLocalDate(a.unlockedAt))}
+                  </p>
+                )}
               </div>
-              <p className="mt-1 text-sm text-ink-muted">{a.description}</p>
-              {a.unlockedAt && (
-                <p className="mt-1 text-xs text-ink-muted">
-                  Unlocked {friendlyDate(isoToLocalDate(a.unlockedAt))}
-                </p>
-              )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     </div>
   );

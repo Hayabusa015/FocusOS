@@ -8,7 +8,7 @@
   .btn {
     position: relative;
     padding: 0.55rem 1.1rem;
-    border-radius: 0.6rem;
+    border-radius: 0.4rem;
     border: 1px solid transparent;
     font-size: 0.875rem;
     font-weight: 600;
@@ -25,14 +25,12 @@
     cursor: not-allowed;
   }
 
-  /* Press. Lifts a little on hover, sinks on press, gold glow. */
+  /* Press: darkens a touch on hover and sits down on press. No glow: the colour is the signal. */
   .btn-press:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--color-accent) 35%, transparent);
+    filter: brightness(0.94);
   }
   .btn-press:active:not(:disabled) {
-    transform: scale(0.96);
-    box-shadow: none;
+    transform: translateY(1px);
   }
 
   /* --- Switches ----------------------------------------------------------------------- */
@@ -105,7 +103,7 @@
     position: absolute;
     inset: 0;
     border: 2px solid var(--color-ink-muted);
-    border-radius: 0.4rem;
+    border-radius: 0.3rem;
     transition:
       background-color 0.2s ease,
       border-color 0.2s ease,

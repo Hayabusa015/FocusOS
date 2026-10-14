@@ -22,6 +22,12 @@
   --color-raised: #eceef1;
   --color-line: #d0d2da;
 
+  /* The side rail: the logo's near-black, so the brand frames the app instead of decorating it */
+  --color-rail: #17181d;
+  --color-rail-raised: #262930;
+  --color-rail-ink: #f1f2f5;
+  --color-rail-muted: #9b9fae;
+
   /* Text */
   --color-ink: #17181d;
   --color-ink-muted: #5b5f6d;
@@ -45,7 +51,7 @@
 
   --font-sans:
     'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --radius-card: 0.9rem;
+  --radius-card: 0.5rem;
 }
 
 @layer base {
@@ -60,6 +66,11 @@
   }
   html {
     color-scheme: light;
+  }
+  /* The rail keeps its own thin, dark scrollbar so the light one does not cut into it. */
+  nav[aria-label='Main'] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rail-raised) transparent;
   }
   :focus-visible {
     outline: 2px solid var(--color-accent);

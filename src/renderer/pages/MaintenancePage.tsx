@@ -69,7 +69,7 @@ export function MaintenancePage() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Home maintenance</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Home maintenance</h1>
         <p className="mt-1 text-ink-muted">
           Things that need doing every so often. Press Done when you do one and the clock restarts.
         </p>

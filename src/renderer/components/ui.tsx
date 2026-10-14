@@ -28,11 +28,14 @@ export function Ring({
   total,
   color,
   size = 24,
+  trackClass = 'stroke-line',
 }: {
   done: number;
   total: number;
   color: string;
   size?: number;
+  /** The empty part of the ring. The dark rail needs a different one. */
+  trackClass?: string;
 }) {
   const radius = 9;
   const circumference = 2 * Math.PI * radius;
@@ -46,7 +49,7 @@ export function Ring({
       data-done={done}
       data-total={total}
     >
-      <circle cx="12" cy="12" r={radius} fill="none" strokeWidth="3" className="stroke-line" />
+      <circle cx="12" cy="12" r={radius} fill="none" strokeWidth="3" className={trackClass} />
       <circle
         cx="12"
         cy="12"
@@ -63,7 +66,28 @@ export function Ring({
   );
 }
 
+/**
+ * A section of a page. It is open: a rule above it and space, not a box. The one thing on a page
+ * that earns a box is the list you act on, which uses `Sheet`.
+ */
 export function Card({
+  children,
+  className = '',
+  label,
+}: {
+  children: ReactNode;
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <section aria-label={label} className={`border-t border-line pt-4 ${className}`}>
+      {children}
+    </section>
+  );
+}
+
+/** The raised sheet: where the work is. Used once or twice a page, never for decoration. */
+export function Sheet({
   children,
   className = '',
   label,
@@ -85,7 +109,7 @@ export function Card({
 export function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{children}</h2>
+      <h2 className="text-base font-semibold text-ink">{children}</h2>
       {hint && <span className="text-xs text-ink-muted">{hint}</span>}
     </div>
   );
@@ -93,7 +117,7 @@ export function SectionTitle({ children, hint }: { children: ReactNode; hint?: s
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-card border border-dashed border-line p-8 text-center">
+    <div className="border-y border-dashed border-line py-8 text-center">
       <p className="font-medium">{title}</p>
       {children && <p className="mx-auto mt-1 max-w-md text-sm text-ink-muted">{children}</p>}
     </div>

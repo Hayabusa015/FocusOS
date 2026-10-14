@@ -28,7 +28,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
     <div>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{greeting(now)}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{greeting(now)}</h1>
           <p className="mt-1 text-ink-muted">{dateText}</p>
         </div>
         <span className="flex gap-2">

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { Area, Task } from '@shared/core';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { toggleTask } from '@/lib/actions';
-import { indexAreas } from '@/lib/areas';
+import { areaColor, indexAreas } from '@/lib/areas';
 import { friendlyDate, friendlyTime } from '@/lib/dates';
 import { AreaTag, Check, inputClass } from './ui';
 
@@ -112,7 +112,10 @@ export function TaskList({
     return (
       <li key={task.id} data-testid="task-row">
         <div
-          className={`group relative flex items-center gap-2 rounded-lg py-1.5 pl-5 pr-2 hover:bg-raised focus-within:bg-raised ${marker} ${dragging?.id === task.id ? 'opacity-40' : ''}`}
+          className={`group relative flex items-center gap-2 rounded-md border-l-[3px] py-1.5 pl-4 pr-2 hover:bg-raised focus-within:bg-raised ${marker} ${dragging?.id === task.id ? 'opacity-40' : ''}`}
+          style={{
+            borderLeftColor: task.areaId ? areaColor(byArea.get(task.areaId)) : 'transparent',
+          }}
           onDragOver={(e) => {
             if (!dragging || dragging.parentId !== task.parentId || dragging.id === task.id) return;
             e.preventDefault();

@@ -3,6 +3,21 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.3.1] - 2026-10-14
+
+A new look that gets out of the way. Nothing works differently.
+
+- **A dark side rail.** The navigation now uses the logo's near-black, with a gold bar marking the
+  page you are on, so the brand frames the app instead of being sprinkled on it.
+- **Fewer boxes.** Sections sit on the page, divided by thin rules and space. The one thing that
+  keeps a raised sheet is the list you act on (today's list).
+- **The day at a glance.** The Dashboard opens with one large figure ("1 of 4 done today") and the
+  rest of the day's numbers beside it, instead of four identical tiles.
+- **Area colour where it means something.** Every task has a coloured edge for its area, and the
+  area list on the Dashboard uses the same edge.
+- **Achievements as a plain list**, unlocked ones marked in gold, instead of a wall of cards.
+- Sharper corners, flat buttons (no glow or lift), and bolder page titles.
+
 ## [0.3.0] - 2026-10-14
 
 Atlas can talk, and do things you ask, once you give it an API key. Nothing in Cortex needs it.

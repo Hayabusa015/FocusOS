@@ -26,7 +26,7 @@ export function InboxPage({ areas, openTask, newTask }: PageProps) {
     <div>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Inbox</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Inbox</h1>
           <p className="mt-1 text-ink-muted">
             Anything you capture lands here. Pick an area, or press its number, to file it.
           </p>

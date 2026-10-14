@@ -36,7 +36,7 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-semibold tracking-tight">Settings</h1>
+      <h1 className="mb-8 text-4xl font-bold tracking-tight">Settings</h1>
 
       <section
         aria-labelledby="updates-heading"

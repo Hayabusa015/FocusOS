@@ -30,9 +30,14 @@ import type { PageProps, Route } from '@/pages/types';
 import { SettingsPage } from './SettingsPage';
 
 const NAV_ITEM =
-  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors';
+  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors';
+// The active page gets the brand gold as a bar down its left edge; everything else stays quiet.
 const navClass = (active: boolean) =>
-  `${NAV_ITEM} ${active ? 'bg-raised font-medium text-ink' : 'text-ink-muted hover:bg-raised hover:text-ink'}`;
+  `${NAV_ITEM} ${
+    active
+      ? 'bg-rail-raised font-medium text-rail-ink shadow-[inset_3px_0_0_var(--color-accent)]'
+      : 'text-rail-muted hover:bg-rail-raised hover:text-rail-ink'
+  }`;
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -113,7 +118,7 @@ export function App() {
     <div className="flex h-full">
       <nav
         aria-label="Main"
-        className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface p-4"
+        className="flex w-60 shrink-0 flex-col overflow-y-auto bg-rail p-4 text-rail-ink"
       >
         <div className="mb-6 flex items-center gap-3 px-2 text-xl font-semibold tracking-tight">
           <img src={logoMark} alt="" width={32} height={32} className="size-8" />
@@ -123,7 +128,7 @@ export function App() {
         <div className="mb-4 space-y-1">
           <button className={navClass(false)} onClick={() => setSearching(true)}>
             <span>Search</span>
-            <kbd className="ml-auto text-xs text-ink-muted">Ctrl K</kbd>
+            <kbd className="ml-auto text-xs text-rail-muted">Ctrl K</kbd>
           </button>
           <button
             className={navClass(atlasOpen)}
@@ -131,14 +136,14 @@ export function App() {
             onClick={() => setAtlasOpen((open) => !open)}
           >
             <span>Atlas</span>
-            <kbd className="ml-auto text-xs text-ink-muted">Ctrl J</kbd>
+            <kbd className="ml-auto text-xs text-rail-muted">Ctrl J</kbd>
           </button>
           <button
             className={navClass(false)}
             onClick={() => setEditor({ taskId: null, areaId: null })}
           >
             <span>Add task</span>
-            <kbd className="ml-auto text-xs text-ink-muted">Ctrl N</kbd>
+            <kbd className="ml-auto text-xs text-rail-muted">Ctrl N</kbd>
           </button>
         </div>
 
@@ -171,7 +176,7 @@ export function App() {
               {inboxCount > 0 && (
                 <span
                   data-testid="inbox-count"
-                  className="ml-auto rounded-full bg-raised px-2 text-xs text-ink"
+                  className="ml-auto rounded-full bg-rail-raised px-2 text-xs text-rail-ink"
                 >
                   {inboxCount}
                 </span>
@@ -198,7 +203,7 @@ export function App() {
           </li>
         </ul>
 
-        <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-rail-muted">
           Areas
         </p>
         <ul className="space-y-1">
@@ -215,6 +220,7 @@ export function App() {
                     done={area.doneThisWeek}
                     total={area.doneThisWeek + area.openCount}
                     color={areaColor(area)}
+                    trackClass="stroke-rail-raised"
                   />
                   {area.name}
                 </button>
@@ -252,7 +258,7 @@ export function App() {
             </button>
           </li>
         </ul>
-        <div className="mt-6 space-y-1 border-t border-line pt-4">
+        <div className="mt-6 space-y-1 border-t border-rail-raised pt-4">
           <button className={navClass(false)} onClick={() => setOverlay('briefing')}>
             Morning briefing
           </button>
@@ -263,7 +269,7 @@ export function App() {
             Shutdown
           </button>
         </div>
-        <p data-testid="sidebar-version" className="mt-auto px-3 pt-4 text-xs text-ink-muted">
+        <p data-testid="sidebar-version" className="mt-auto px-3 pt-4 text-xs text-rail-muted">
           {version ? `Version ${version}` : ''}
         </p>
       </nav>
