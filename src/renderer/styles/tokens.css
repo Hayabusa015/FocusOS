@@ -7,7 +7,7 @@
  */
 @import 'tailwindcss';
 
-@theme {
+@theme static {
   /* Drop Tailwind's default palette so only the tokens below exist. */
   --color-*: initial;
 

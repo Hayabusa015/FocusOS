@@ -2,9 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
 import { App } from './app/App';
+import { CapturePage } from './pages/CapturePage';
+
+// The quick-capture window loads this same page at #/capture and shows only the capture box.
+const isCapture = window.location.hash === '#/capture';
 
 createRoot(document.getElementById('root') as HTMLElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{isCapture ? <CapturePage /> : <App />}</StrictMode>,
 );

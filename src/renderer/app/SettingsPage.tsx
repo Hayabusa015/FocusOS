@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppInfo, UpdaterState } from '@shared/schemas';
+import { CoreSettings } from '@/components/CoreSettings';
 import { formatWhen } from '@/lib/format';
 
 const STATUS_TEXT: Record<UpdaterState['status'], string> = {
@@ -72,6 +73,8 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
           </p>
         )}
       </section>
+
+      <CoreSettings />
 
       <section
         aria-labelledby="about-heading"
