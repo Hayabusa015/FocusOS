@@ -20,6 +20,15 @@ const VERSION = (
 const NEXT = nextPatchVersion(VERSION);
 const dataDirs: string[] = [];
 
+async function mainWindow(app: ElectronApplication): Promise<Page> {
+  for (let i = 0; i < 100; i++) {
+    const found = app.windows().find((w) => !w.url().includes('#/capture') && w.url() !== '');
+    if (found) return found;
+    await new Promise((done) => setTimeout(done, 100));
+  }
+  throw new Error('The main window did not open');
+}
+
 async function launch(
   dataDir: string,
   extraEnv: Record<string, string> = {},
@@ -29,7 +38,9 @@ async function launch(
     args: ['.', '--no-sandbox', '--disable-gpu'],
     env: { ...process.env, CORTEX_DATA_DIR: dataDir, ...extraEnv },
   });
-  const page = await app.firstWindow();
+  // The hidden quick-capture window is created at start-up too; the tests drive the main window.
+  await app.firstWindow();
+  const page = await mainWindow(app);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
@@ -49,11 +60,11 @@ test('opens on an empty Today page and shows the installed version in Settings',
     await expect(
       page.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still up/ }),
     ).toBeVisible();
-    await expect(page.getByText('Nothing here yet')).toBeVisible();
+    await expect(page.getByText('Nothing planned for today')).toBeVisible();
     await page.screenshot({ path: 'test-results/today.png' });
 
     await expect(page.getByTestId('sidebar-version')).toHaveText(`Version ${VERSION}`);
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByTestId('installed-version')).toHaveText(VERSION);
     // A development build never checks for updates, and says why.
     await expect(page.getByTestId('update-status')).toHaveText('Off');
@@ -84,7 +95,20 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
       require: 'undefined',
       process: 'undefined',
       electron: 'undefined',
-      cortexKeys: ['app', 'updater'],
+      cortexKeys: [
+        'app',
+        'areas',
+        'capture',
+        'maintenance',
+        'onDataChanged',
+        'search',
+        'settings',
+        'tasks',
+        'today',
+        'undo',
+        'upcoming',
+        'updater',
+      ],
     });
 
     // The strict policy blocks inline script and outside connections. (Playwright's own evaluate
@@ -184,7 +208,7 @@ test('the update flow: banner, safe notes, Later, download, backup, restart', as
     marker.prepare("INSERT INTO settings (key, value) VALUES ('test.marker', '\"kept\"')").run();
     marker.close();
 
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Check for updates' }).click();
 
     const banner = page.getByRole('status', { name: 'Update' });
@@ -233,5 +257,147 @@ test('the update flow: banner, safe notes, Later, download, backup, restart', as
     ).toEqual([]);
   } finally {
     await app.close().catch(() => undefined);
+  }
+});
+
+// --- Phase 1: core tasks -------------------------------------------------------------------
+
+const newDataDir = () => {
+  const d = mkdtempSync(join(tmpdir(), 'cortex-e2e-'));
+  dataDirs.push(d);
+  return d;
+};
+
+test('capture window: Enter puts the task in the Inbox in under a second; Esc saves nothing', async () => {
+  const { app, page, errors } = await launch(newDataDir());
+  try {
+    const capture = app.windows().find((w) => w.url().includes('#/capture'));
+    expect(capture, 'the hidden capture window exists').toBeTruthy();
+    const box = capture!.getByLabel('Capture a task');
+
+    await box.fill('thrown away');
+    await box.press('Escape');
+    expect(await page.evaluate(() => window.cortex.tasks.list({ view: 'inbox' }))).toHaveLength(0);
+
+    await box.fill('Grade the quizzes #chemistry !tomorrow');
+    const started = Date.now();
+    await box.press('Enter');
+    let found = false;
+    while (Date.now() - started < 1000 && !found) {
+      const areas = await page.evaluate(() => window.cortex.areas.list());
+      const chem = areas.find((a) => a.name === 'Chemistry')!;
+      const tasks = await page.evaluate(
+        (id) => window.cortex.tasks.list({ view: 'area', areaId: id }),
+        chem.id,
+      );
+      found = tasks.some((t) => t.title === 'Grade the quizzes' && t.dueDate !== null);
+    }
+    expect(found, 'saved with its area and due date within 1 s').toBe(true);
+
+    await box.fill('plain thought');
+    await box.press('Enter');
+    await expect(page.getByTestId('inbox-count')).toHaveText('1');
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
+
+test('the capture shortcut is registered with the system', async () => {
+  const { app } = await launch(newDataDir());
+  try {
+    const registered = await app.evaluate(({ globalShortcut }) =>
+      globalShortcut.isRegistered('Control+Alt+N'),
+    );
+    // Linux test machines may refuse global shortcuts; Windows is checked by hand.
+    test.skip(!registered && process.platform !== 'win32', 'no global shortcuts in this session');
+    expect(registered).toBe(true);
+  } finally {
+    await app.close();
+  }
+});
+
+test('capture, file, complete, undo; areas are seeded once', async () => {
+  const dataDir = newDataDir();
+  const first = await launch(dataDir);
+  try {
+    const { page, errors } = first;
+    expect((await page.evaluate(() => window.cortex.areas.list())).map((a) => a.name)).toEqual([
+      'Chemistry',
+      'Physics',
+      'Geology',
+      'Coaching',
+      'Home',
+      'Admin',
+      'Personal',
+    ]);
+    await page.evaluate(() => window.cortex.capture.submit('Order lab goggles'));
+
+    await page.getByRole('button', { name: 'Inbox' }).click();
+    await expect(page.getByRole('button', { name: 'Order lab goggles' })).toBeVisible();
+    await page.getByRole('button', { name: 'File in Physics' }).click();
+    await expect(page.getByText('Inbox is empty')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Physics', exact: true }).click();
+    const row = page.getByTestId('task-row').filter({ hasText: 'Order lab goggles' });
+    await row.getByRole('checkbox').click();
+    await expect(page.getByTestId('area-progress')).toContainText('1 done this week');
+    await expect(page.getByTestId('toast-text')).toContainText('Completed');
+
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(page.getByTestId('area-progress')).toContainText('0 done this week');
+
+    expect(errors).toEqual([]);
+  } finally {
+    await first.app.close();
+  }
+  // A second start does not seed the areas again.
+  const second = await launch(dataDir);
+  try {
+    expect(await second.page.evaluate(() => window.cortex.areas.list())).toHaveLength(7);
+  } finally {
+    await second.app.close();
+  }
+});
+
+test('a repeating task makes its next instance; undo takes it back', async () => {
+  const { app, page } = await launch(newDataDir());
+  try {
+    const result = await page.evaluate(async () => {
+      const today = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const due = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const made = await window.cortex.tasks.create({
+        title: 'Weekly report',
+        dueDate: due,
+        recurrence: { freq: 'every_n_days', n: 7 },
+      });
+      const done = await window.cortex.tasks.complete(made.id);
+      const log = await window.cortex.undo.list();
+      await window.cortex.undo.apply(log[0]!.id);
+      const after = await window.cortex.tasks.get(done.next!.id);
+      return { due, next: done.next?.dueDate, nextAfterUndo: after };
+    });
+    expect(result.next).not.toBe(result.due);
+    expect(result.nextAfterUndo).toBeNull();
+  } finally {
+    await app.close();
+  }
+});
+
+test('home maintenance: starting point, Done restarts the clock, undo reverses', async () => {
+  const { app, page, errors } = await launch(newDataDir());
+  try {
+    await page.getByRole('button', { name: 'Home maintenance' }).click();
+    await page.getByRole('button', { name: '+ Replace the HVAC air filter' }).click();
+    const card = page.getByRole('region', { name: 'Replace the HVAC air filter' });
+    await expect(card).toContainText('Not done yet');
+    await card.getByRole('button', { name: 'Done' }).click();
+    await expect(card).toContainText('Done today');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(card).toContainText('Not done yet');
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
   }
 });
