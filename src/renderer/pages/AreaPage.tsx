@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { Task } from '@shared/core';
 import { Card, ErrorNote, Ring, SectionTitle, inputClass } from '@/components/ui';
+import { TaskList } from '@/components/TaskList';
 import { TaskRow } from '@/components/TaskRow';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { toggleTask } from '@/lib/actions';
@@ -35,11 +36,39 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
   const column = (heading: string, items: Task[], start?: boolean) => (
     <Card label={heading} className="min-w-0">
       <SectionTitle hint={String(items.length)}>{heading}</SectionTitle>
-      {items.length === 0 ? (
-        <p className="text-sm text-ink-muted">Nothing here.</p>
+      <TaskList
+        tasks={items}
+        areas={areas}
+        showArea={false}
+        onOpen={openTask}
+        onError={setActionError}
+        emptyText="Nothing here."
+        trailing={
+          start
+            ? (t) => (
+                <button
+                  className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink-muted opacity-0 hover:text-ink focus:opacity-100 group-hover:opacity-100"
+                  onClick={() =>
+                    run(() => window.cortex.tasks.update({ id: t.id, status: 'doing' }))
+                  }
+                >
+                  Start
+                </button>
+              )
+            : undefined
+        }
+      />
+    </Card>
+  );
+
+  const doneColumn = (
+    <Card label="Done this week" className="min-w-0">
+      <SectionTitle hint={String(done.length)}>Done this week</SectionTitle>
+      {done.length === 0 ? (
+        <p className="px-2 py-3 text-sm text-ink-muted">Nothing here.</p>
       ) : (
         <ul>
-          {items.map((t) => (
+          {done.map((t) => (
             <TaskRow
               key={t.id}
               task={t}
@@ -47,18 +76,6 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
               showArea={false}
               onOpen={(task) => openTask(task.id)}
               onToggle={(task) => run(() => toggleTask(task))}
-              trailing={
-                start ? (
-                  <button
-                    className="rounded-lg border border-line px-2 py-1 text-xs text-ink-muted opacity-0 hover:text-ink focus:opacity-100 group-hover:opacity-100"
-                    onClick={() =>
-                      run(() => window.cortex.tasks.update({ id: t.id, status: 'doing' }))
-                    }
-                  >
-                    Start
-                  </button>
-                ) : undefined
-              }
             />
           ))}
         </ul>
@@ -116,7 +133,7 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
       <div className="grid gap-4 lg:grid-cols-3">
         {column('To do', todo, true)}
         {column('Doing', doing)}
-        {column('Done this week', done)}
+        {doneColumn}
       </div>
     </div>
   );

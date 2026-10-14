@@ -3,6 +3,23 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.1.1] - 2026-10-14
+
+A new look and a daily checklist.
+
+- **Day-grey look.** A light grey page with lighter cards, the logo's gold and violet running
+  through buttons, check marks, switches and progress bars.
+- **Dashboard** is now the home screen: how today is going, today's list, what is coming up, home
+  maintenance that needs attention, and every area at a glance.
+- **Daily task list** with check marks, on the Dashboard and on Today. Add to today straight from
+  the list; what you finish stays at the bottom, checked off.
+- **Drag to reorder** any list: grab the dots at the left of a task. Alt+Up and Alt+Down do the same
+  from the keyboard. Undo puts it back.
+- **Indented steps, like Notion.** Press the indent button (or Alt+Right) to make a task a step of
+  the one above it, and the outdent button (or Alt+Left) to bring it back. Open or close a task's
+  steps with the small arrow.
+- A glowing loading spinner, press-down buttons and pill switches.
+
 ## [0.1.0] - 2026-10-14
 
 Cortex is now a working task app. Everything here runs on your PC with no account and no internet.

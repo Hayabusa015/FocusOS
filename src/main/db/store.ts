@@ -29,11 +29,13 @@ import {
   deleteTask,
   getTask,
   listBlocksOn,
+  listChildren,
   listCarryForward,
   listDueOn,
   listSubtasks,
   listTasks,
   reopenTask,
+  reorderTasks,
   rescheduleTask,
   updateTask,
 } from './tasks';
@@ -59,6 +61,8 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
     // Tasks
     getTask: (id: string) => getTask(ctx, id),
     listSubtasks: (id: string) => listSubtasks(ctx, id),
+    listChildren: (ids: string[]) => listChildren(ctx, ids),
+    reorderTasks: (ids: string[]) => reorderTasks(ctx, ids),
     listTasks: (filter: TaskFilter) => listTasks(ctx, filter),
     listDueOn: (date: LocalDate) => listDueOn(ctx, date),
     listCarryForward: () => listCarryForward(ctx, ctx.today()),

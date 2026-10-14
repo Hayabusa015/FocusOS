@@ -13,6 +13,7 @@ import type { Ctx } from './context';
 import { listMaintenance, searchMaintenance } from './maintenance';
 import {
   countCompletedOn,
+  listCompletedOn,
   listBlocksOn,
   listCarryForward,
   listDueBetween,
@@ -67,6 +68,7 @@ export function getToday(ctx: Ctx, window: DayWindow): TodayView {
     nextBlock: nextBlock ? strip(nextBlock) : null,
     blocks,
     dueToday,
+    doneToday: listCompletedOn(ctx, today),
     carryForward: listCarryForward(ctx, today),
     counters: {
       tasksDone: doneToday,

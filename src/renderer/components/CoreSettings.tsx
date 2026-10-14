@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type { AppSettingsPatch, AreaKind } from '@shared/core';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { AREA_COLOR_TOKENS, areaColor } from '@/lib/areas';
-import { Card, ErrorNote, buttonPrimary, buttonQuiet, inputClass } from './ui';
+import { Card, ErrorNote, Switch, buttonPrimary, buttonQuiet, inputClass } from './ui';
 
 const KEY_NAMES: Record<string, string> = {
   ' ': 'Space',
@@ -65,7 +65,7 @@ export function CoreSettings() {
             <Field label="Day starts">
               <input
                 type="time"
-                className={`${inputClass} w-32`}
+                className={`${inputClass} w-32!`}
                 value={s.dayStart}
                 onChange={(e) => e.target.value && update({ dayStart: e.target.value })}
               />
@@ -73,23 +73,22 @@ export function CoreSettings() {
             <Field label="Day ends">
               <input
                 type="time"
-                className={`${inputClass} w-32`}
+                className={`${inputClass} w-32!`}
                 value={s.dayEnd}
                 onChange={(e) => e.target.value && update({ dayEnd: e.target.value })}
               />
             </Field>
             <Field label="Notifications">
-              <input
-                type="checkbox"
-                className="size-5 accent-accent"
+              <Switch
+                label="Notifications"
                 checked={s.notificationsEnabled}
-                onChange={(e) => update({ notificationsEnabled: e.target.checked })}
+                onChange={(next) => update({ notificationsEnabled: next })}
               />
             </Field>
             <Field label="Quiet hours start">
               <input
                 type="time"
-                className={`${inputClass} w-32`}
+                className={`${inputClass} w-32!`}
                 value={s.quietStart}
                 onChange={(e) => e.target.value && update({ quietStart: e.target.value })}
               />
@@ -97,7 +96,7 @@ export function CoreSettings() {
             <Field label="Quiet hours end">
               <input
                 type="time"
-                className={`${inputClass} w-32`}
+                className={`${inputClass} w-32!`}
                 value={s.quietEnd}
                 onChange={(e) => e.target.value && update({ quietEnd: e.target.value })}
               />
@@ -115,7 +114,7 @@ export function CoreSettings() {
                 readOnly
                 data-testid="hotkey"
                 aria-label="Capture shortcut"
-                className={`${inputClass} w-56 text-center`}
+                className={`${inputClass} w-56! text-center`}
                 value={recording ? 'Press the new shortcut…' : s.captureHotkey}
                 onFocus={() => setRecording(true)}
                 onBlur={() => setRecording(false)}
@@ -137,11 +136,10 @@ export function CoreSettings() {
               </p>
             )}
             <Field label="Keep running in the tray when the window closes">
-              <input
-                type="checkbox"
-                className="size-5 accent-accent"
+              <Switch
+                label="Keep running in the tray"
                 checked={s.keepRunningInTray}
-                onChange={(e) => update({ keepRunningInTray: e.target.checked })}
+                onChange={(next) => update({ keepRunningInTray: next })}
               />
             </Field>
             <p className="mt-2 text-xs text-ink-muted">
@@ -197,7 +195,7 @@ export function CoreSettings() {
           }}
         >
           <input
-            className={`${inputClass} w-56`}
+            className={`${inputClass} w-56!`}
             aria-label="New area name"
             placeholder="New area"
             value={newName}
@@ -205,7 +203,7 @@ export function CoreSettings() {
           />
           <select
             aria-label="Kind"
-            className={`${inputClass} w-32`}
+            className={`${inputClass} w-32!`}
             value={newKind}
             onChange={(e) => setNewKind(e.target.value as AreaKind)}
           >

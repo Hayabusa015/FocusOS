@@ -45,6 +45,8 @@ const api: CortexApi = {
     reopen: (id) => call(CHANNELS.tasksReopen, { id }),
     delete: (id) => call(CHANNELS.tasksDelete, { id }),
     reschedule: (id, dueDate) => call(CHANNELS.tasksReschedule, { id, dueDate }),
+    reorder: (ids) => call(CHANNELS.tasksReorder, { ids }),
+    children: (ids) => call(CHANNELS.tasksChildren, { ids }),
   },
   capture: {
     submit: (text) => call(CHANNELS.captureSubmit, { text }),

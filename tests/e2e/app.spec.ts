@@ -52,7 +52,7 @@ async function launch(
 
 test.afterAll(() => dataDirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
-test('opens on an empty Today page and shows the installed version in Settings', async () => {
+test('opens on an empty dashboard and shows the installed version in Settings', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'cortex-e2e-'));
   dataDirs.push(dataDir);
   const { app, page, errors } = await launch(dataDir);
@@ -60,7 +60,8 @@ test('opens on an empty Today page and shows the installed version in Settings',
     await expect(
       page.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still up/ }),
     ).toBeVisible();
-    await expect(page.getByText('Nothing planned for today')).toBeVisible();
+    await expect(page.getByText("Nothing on today's list yet")).toBeVisible();
+    await expect(page.getByTestId('tile-inbox')).toContainText('0');
     await page.screenshot({ path: 'test-results/today.png' });
 
     await expect(page.getByTestId('sidebar-version')).toHaveText(`Version ${VERSION}`);
@@ -333,12 +334,12 @@ test('capture, file, complete, undo; areas are seeded once', async () => {
     ]);
     await page.evaluate(() => window.cortex.capture.submit('Order lab goggles'));
 
-    await page.getByRole('button', { name: 'Inbox' }).click();
+    await page.getByRole('navigation').getByRole('button', { name: 'Inbox' }).click();
     await expect(page.getByRole('button', { name: 'Order lab goggles' })).toBeVisible();
     await page.getByRole('button', { name: 'File in Physics' }).click();
     await expect(page.getByText('Inbox is empty')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Physics', exact: true }).click();
+    await page.getByRole('navigation').getByRole('button', { name: 'Physics' }).click();
     const row = page.getByTestId('task-row').filter({ hasText: 'Order lab goggles' });
     await row.getByRole('checkbox').click();
     await expect(page.getByTestId('area-progress')).toContainText('1 done this week');
@@ -397,6 +398,86 @@ test('home maintenance: starting point, Done restarts the clock, undo reverses',
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(card).toContainText('Not done yet');
     expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Daily list, dashboard, drag and steps --------------------------------------------------
+
+test('dashboard and daily list: add to today, tick, steps indent, reorder, undo', async () => {
+  const { app, page, errors } = await launch(newDataDir());
+  try {
+    // Dashboard is the home screen, and the daily list is on it.
+    await expect(
+      page.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still up/ }),
+    ).toBeVisible();
+    const list = page.getByTestId('daily-list');
+    const add = list.getByPlaceholder('Add to today and press Enter');
+    for (const title of ['Alpha', 'Beta', 'Gamma']) {
+      await add.fill(title);
+      await add.press('Enter');
+      await expect(list.locator('button.min-w-0', { hasText: title })).toBeVisible();
+    }
+    await expect(page.getByTestId('tile-due')).toContainText('3');
+
+    // Tick one: it moves to Done, struck through, and the tile counts it.
+    await list.getByRole('checkbox', { name: 'Complete Alpha' }).click();
+    await expect(list.getByTestId('task-row-done')).toContainText('Alpha');
+    await expect(page.getByTestId('tile-today')).toContainText('1 of 3');
+
+    // Indent Gamma under Beta with the button; Beta shows a step count and a nested row.
+    await list.getByRole('button', { name: 'Indent Gamma' }).click();
+    await expect(list.getByRole('button', { name: 'Outdent Gamma' })).toBeVisible();
+    await expect(list).toContainText('0/1 steps');
+
+    // Outdent brings it back to the main list.
+    await list.getByRole('button', { name: 'Outdent Gamma' }).click();
+    await expect(list.getByRole('button', { name: 'Indent Gamma' })).toBeVisible();
+
+    // Keyboard reorder: Alt+Up moves Gamma above Beta.
+    const order = () => list.getByTestId('task-row').locator('button.min-w-0').allInnerTexts();
+    expect((await order()).map((t) => t.split('\n')[0])).toEqual(['Beta', 'Gamma']);
+    await list.locator('button.min-w-0', { hasText: 'Gamma' }).press('Alt+ArrowUp');
+    await expect
+      .poll(async () => (await order()).map((t) => t.split('\n')[0]))
+      .toEqual(['Gamma', 'Beta']);
+
+    // Undo puts the order back.
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect
+      .poll(async () => (await order()).map((t) => t.split('\n')[0]))
+      .toEqual(['Beta', 'Gamma']);
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
+
+test('drag a task by its handle to reorder the list', async () => {
+  const { app, page } = await launch(newDataDir());
+  try {
+    await page.evaluate(async () => {
+      const today = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const due = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      for (const title of ['One', 'Two', 'Three'])
+        await window.cortex.tasks.create({ title, dueDate: due });
+    });
+    const list = page.getByTestId('daily-list');
+    const names = async () =>
+      (await list.getByTestId('task-row').locator('button.min-w-0').allInnerTexts()).map(
+        (t) => t.split('\n')[0],
+      );
+    await expect.poll(names).toEqual(['One', 'Two', 'Three']);
+    const handle = list
+      .getByTestId('task-row')
+      .filter({ hasText: 'Three' })
+      .getByTestId('drag-handle');
+    await handle.hover();
+    // Drop on the top half of the first row, which means "before it".
+    await handle.dragTo(list.getByTestId('task-row').first(), { targetPosition: { x: 60, y: 3 } });
+    await expect.poll(names).toEqual(['Three', 'One', 'Two']);
   } finally {
     await app.close();
   }

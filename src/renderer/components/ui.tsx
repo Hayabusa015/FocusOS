@@ -23,14 +23,24 @@ export function AreaTag({ area }: { area: Area | null | undefined }) {
 }
 
 /** A progress ring: done this week out of everything on the board. */
-export function Ring({ done, total, color }: { done: number; total: number; color: string }) {
+export function Ring({
+  done,
+  total,
+  color,
+  size = 24,
+}: {
+  done: number;
+  total: number;
+  color: string;
+  size?: number;
+}) {
   const radius = 9;
   const circumference = 2 * Math.PI * radius;
   const fraction = total === 0 ? 0 : Math.min(1, done / total);
   return (
     <svg
-      width="24"
-      height="24"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       aria-hidden="true"
       data-done={done}
@@ -99,9 +109,72 @@ export function ErrorNote({ message }: { message: string | null }) {
   );
 }
 
-export const buttonPrimary =
-  'rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
+/** The gold "Press" button: lifts on hover, sinks when pressed. */
+export const buttonPrimary = 'btn btn-press';
 export const buttonQuiet =
-  'rounded-lg border border-line px-3 py-1.5 text-sm text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50';
+  'rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50';
 export const inputClass =
   'w-full rounded-lg border border-line bg-ground px-3 py-2 text-sm text-ink placeholder:text-ink-muted';
+
+/** A check mark box. The real checkbox is underneath, so keyboards and screen readers work. */
+export function Check({
+  checked,
+  onChange,
+  label,
+  round = false,
+}: {
+  checked: boolean;
+  onChange(next: boolean): void;
+  label: string;
+  round?: boolean;
+}) {
+  return (
+    <span className={`check ${round ? 'check-round' : ''}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="box" />
+    </span>
+  );
+}
+
+/** An on/off switch (the pill). */
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange(next: boolean): void;
+  label: string;
+}) {
+  return (
+    <span className="switch">
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="track" />
+    </span>
+  );
+}
+
+/** The glowing spinner, for anything that is loading. */
+export function Loading({ label = 'Loading' }: { label?: string }) {
+  return (
+    <div className="flex justify-center py-10">
+      <div
+        className="loader-glow"
+        style={{ '--size': '3rem' } as React.CSSProperties}
+        role="status"
+        aria-label={label}
+      />
+    </div>
+  );
+}

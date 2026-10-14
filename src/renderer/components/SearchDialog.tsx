@@ -42,7 +42,7 @@ export function SearchDialog({ onClose, onOpenTask, onOpenMaintenance }: Props) 
   const shown = query.trim() ? results : null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-ground/70 pt-[15vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-brand-black/40 pt-[15vh]"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
