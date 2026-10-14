@@ -187,8 +187,15 @@ if (!app.requestSingleInstanceLock()) {
     const coreStore = createStore(database);
     // First run: the seven default areas (PLAN §6). Done once, so deleting one never brings it back.
     if (!settings.get('areas.seeded', z.boolean())) {
-      coreStore.seedAreas();
-      settings.set('areas.seeded', true);
+      database.exec('BEGIN');
+      try {
+        coreStore.seedAreas();
+        settings.set('areas.seeded', true);
+        database.exec('COMMIT');
+      } catch (error) {
+        database.exec('ROLLBACK');
+        throw error;
+      }
     }
     const backupsDir = join(dataDir, 'backups');
     try {
@@ -220,16 +227,20 @@ if (!app.requestSingleInstanceLock()) {
       getSettings: settingsInfo,
       updateSettings: (patch) => {
         const before = currentSettings();
-        const next = writeSettings(settings, patch);
-        keepInTray = next.keepRunningInTray;
-        if (next.captureHotkey !== before.captureHotkey) {
-          hotkeyOk = capture?.setHotkey(next.captureHotkey) ?? false;
-          // A hotkey that did not register must not replace one that worked.
-          if (!hotkeyOk) {
-            writeSettings(settings, { captureHotkey: before.captureHotkey });
+        // Try a new shortcut first: if it is refused, nothing in this patch is saved.
+        if (patch.captureHotkey && patch.captureHotkey !== before.captureHotkey) {
+          if (!capture?.setHotkey(patch.captureHotkey)) {
             hotkeyOk = capture?.setHotkey(before.captureHotkey) ?? false;
             throw new Error('That shortcut is not available. Another program may be using it.');
           }
+          hotkeyOk = true;
+        }
+        try {
+          const next = writeSettings(settings, patch);
+          keepInTray = next.keepRunningInTray;
+        } catch (error) {
+          hotkeyOk = capture?.setHotkey(before.captureHotkey) ?? false;
+          throw error;
         }
         broadcast(EVENTS.dataChanged, { logId: null, summary: null });
         return settingsInfo();

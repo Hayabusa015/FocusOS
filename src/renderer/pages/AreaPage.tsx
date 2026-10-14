@@ -11,6 +11,8 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
   const area = areas.find((a) => a.id === areaId) ?? null;
   const load = useCallback(() => window.cortex.tasks.list({ view: 'area', areaId }), [areaId]);
   const { data: tasks, error } = useLive(load);
+  const loadUpcoming = useCallback(() => window.cortex.upcoming.get(), []);
+  const { data: upcoming } = useLive(loadUpcoming);
   const [title, setTitle] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -23,6 +25,10 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
   const doing = (tasks ?? []).filter((t) => t.status === 'doing');
   const done = (tasks ?? []).filter((t) => t.status === 'done');
   const total = todo.length + doing.length + done.length;
+
+  const upcomingHere = (upcoming?.days ?? [])
+    .flatMap((d) => d.tasks)
+    .filter((t) => t.areaId === areaId && t.status !== 'done');
 
   if (!area) return <p className="text-ink-muted">That area is not here any more.</p>;
 
@@ -90,6 +96,23 @@ export function AreaPage({ areas, areaId, openTask }: PageProps & { areaId: stri
           onChange={(e) => setTitle(e.target.value)}
         />
       </form>
+      {upcomingHere.length > 0 && (
+        <Card label="Upcoming in this area" className="mb-4">
+          <SectionTitle>Upcoming</SectionTitle>
+          <ul>
+            {upcomingHere.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                area={area}
+                showArea={false}
+                onOpen={(task) => openTask(task.id)}
+                onToggle={(task) => run(() => toggleTask(task))}
+              />
+            ))}
+          </ul>
+        </Card>
+      )}
       <div className="grid gap-4 lg:grid-cols-3">
         {column('To do', todo, true)}
         {column('Doing', doing)}

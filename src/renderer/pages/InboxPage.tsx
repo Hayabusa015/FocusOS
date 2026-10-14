@@ -63,6 +63,18 @@ export function InboxPage({ areas, openTask, newTask }: PageProps) {
             }}
             trailing={
               <span className="flex flex-wrap justify-end gap-1">
+                <button
+                  title="Park it for later"
+                  className="rounded-lg border border-line px-2 py-1 text-xs text-ink-muted hover:text-ink"
+                  onClick={() => {
+                    setActionError(null);
+                    window.cortex.tasks
+                      .update({ id: task.id, status: 'someday' })
+                      .catch((e: unknown) => setActionError(errorMessage(e)));
+                  }}
+                >
+                  Someday
+                </button>
                 {areas.map((a, i) => (
                   <button
                     key={a.id}

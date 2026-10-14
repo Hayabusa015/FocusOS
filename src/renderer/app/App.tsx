@@ -13,6 +13,7 @@ import { AreaPage } from '@/pages/AreaPage';
 import { InboxPage } from '@/pages/InboxPage';
 import { MaintenancePage } from '@/pages/MaintenancePage';
 import { TodayPage } from '@/pages/TodayPage';
+import { SomedayPage } from '@/pages/SomedayPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
 import type { PageProps, Route } from '@/pages/types';
 import { SettingsPage } from './SettingsPage';
@@ -126,6 +127,15 @@ export function App() {
               Upcoming
             </button>
           </li>
+          <li>
+            <button
+              className={navClass(route.page === 'someday')}
+              aria-current={route.page === 'someday' ? 'page' : undefined}
+              onClick={() => setRoute({ page: 'someday' })}
+            >
+              Someday
+            </button>
+          </li>
         </ul>
 
         <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -185,6 +195,7 @@ export function App() {
           {route.page === 'today' && <TodayPage {...pageProps} />}
           {route.page === 'inbox' && <InboxPage {...pageProps} />}
           {route.page === 'upcoming' && <UpcomingPage {...pageProps} />}
+          {route.page === 'someday' && <SomedayPage {...pageProps} />}
           {route.page === 'area' && <AreaPage {...pageProps} areaId={route.areaId} />}
           {route.page === 'maintenance' && <MaintenancePage />}
           {route.page === 'settings' && <SettingsPage updater={updater} />}

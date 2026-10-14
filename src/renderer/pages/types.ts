@@ -4,6 +4,7 @@ export type Route =
   | { page: 'today' }
   | { page: 'inbox' }
   | { page: 'upcoming' }
+  | { page: 'someday' }
   | { page: 'area'; areaId: string }
   | { page: 'maintenance' }
   | { page: 'settings' };
