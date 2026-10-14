@@ -3,6 +3,33 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.2.0] - 2026-10-14
+
+Getting things done now counts, and the day has a beginning and an end.
+
+- **XP and levels.** Finishing a task earns XP by size (small 10, medium 20, large 40), 50% more
+  for a task you had put off twice or more. Home maintenance is worth 15, a completed focus session
+  1 for every 5 minutes, emptying your inbox 10 (once a day) and closing the day 10. Undo takes the
+  points back.
+- **Wins.** Every finished task writes a win, and you can log your own ("handled a tough parent
+  call"). The new **Wins** page shows today's wins, your week, your level, your achievements and
+  your streak.
+- **A streak that forgives.** "Active days this week" is a count out of 7 (a day is active with 3
+  wins), so one missed day costs one day, not everything.
+- **Celebrations.** A check, a "+XP" pill and a soft sound when you finish something, with
+  confetti for a large task, a frog, or a cleared day. Turn them off in Settings.
+- **Achievements:** First Capture, Inbox Zero, Frog Eater, Clean Sweep, Deep Work, Homekeeper, Unit
+  Closer, Week Warrior, Shutdown Habit, Level 5 and Level 10.
+- **Focus sessions.** One task, a timer and a Done button, with everything else hidden. Esc ends it.
+  Start one from the Dashboard, the sidebar, or the ◎ button on any task.
+- **Morning briefing** on your first open after 5:00 (or from the sidebar): what is due, what
+  slipped, home maintenance, and "Pick your first thing".
+- **Shutdown ritual** from the sidebar, or the reminder at 15:30 on weekdays: today's wins, one tap
+  for each unfinished task (Tomorrow, Pick a day, Someday, Done after all), your inbox, and
+  tomorrow's first three. It ends with "Everything is captured. You can stop thinking about work."
+  It will not finish while anything dated today is still open.
+- The Dashboard shows your level, XP today and streak; Today shows wins and XP.
+
 ## [0.1.1] - 2026-10-14
 
 A new look and a daily checklist.

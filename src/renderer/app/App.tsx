@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Celebration } from '@/components/Celebration';
+import { FocusScreen, FocusStart } from '@/components/Focus';
 import { JustUpdatedCard } from '@/components/JustUpdatedCard';
+import { MorningBriefing } from '@/components/MorningBriefing';
+import { ShutdownRitual } from '@/components/ShutdownRitual';
 import { SearchDialog } from '@/components/SearchDialog';
 import { TaskEditor } from '@/components/TaskEditor';
 import { UndoToast } from '@/components/UndoToast';
@@ -13,10 +17,12 @@ import { areaColor } from '@/lib/areas';
 import { AreaPage } from '@/pages/AreaPage';
 import { InboxPage } from '@/pages/InboxPage';
 import { MaintenancePage } from '@/pages/MaintenancePage';
+import { WinsPage } from '@/pages/WinsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { TodayPage } from '@/pages/TodayPage';
 import { SomedayPage } from '@/pages/SomedayPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
+import type { FocusSession } from '@shared/core';
 import type { PageProps, Route } from '@/pages/types';
 import { SettingsPage } from './SettingsPage';
 
@@ -38,6 +44,12 @@ export function App() {
     null,
   );
   const [searching, setSearching] = useState(false);
+  const [overlay, setOverlay] = useState<'briefing' | 'shutdown' | null>(null);
+  const [focusStart, setFocusStart] = useState<{
+    taskId: string | null;
+    title: string | null;
+  } | null>(null);
+  const [session, setSession] = useState<FocusSession | null>(null);
   const updater = useUpdaterState();
   const areas = useAreas() ?? [];
   const loadInbox = useCallback(() => window.cortex.tasks.list({ view: 'inbox' }), []);
@@ -46,6 +58,17 @@ export function App() {
   useEffect(() => {
     void window.cortex.app.info().then((info) => setVersion(info.version));
   }, []);
+
+  // On start: pick up a focus session that is still running, and offer the morning briefing once a day.
+  useEffect(() => {
+    void window.cortex.focus.active().then(setSession);
+    void window.cortex.rituals.state().then((state) => {
+      if (state.briefingDue) setOverlay('briefing');
+    });
+    return window.cortex.rituals.onOpenShutdown(() => setOverlay('shutdown'));
+  }, []);
+  const loadSettings = useCallback(() => window.cortex.settings.get(), []);
+  const soundOn = useLive(loadSettings).data?.settings.sound ?? true;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -68,6 +91,13 @@ export function App() {
     openTask: (id) => setEditor({ taskId: id, areaId: null }),
     newTask: (areaId = null) => setEditor({ taskId: null, areaId }),
     go: setRoute,
+    focus: (taskId = null) => {
+      if (session) return;
+      if (!taskId) return setFocusStart({ taskId: null, title: null });
+      void window.cortex.tasks.get(taskId).then((found) => {
+        setFocusStart({ taskId, title: found?.task.title ?? null });
+      });
+    },
   };
   const inboxCount = inbox?.length ?? 0;
 
@@ -180,6 +210,15 @@ export function App() {
         <ul className="mt-6 space-y-1">
           <li>
             <button
+              className={navClass(route.page === 'wins')}
+              aria-current={route.page === 'wins' ? 'page' : undefined}
+              onClick={() => setRoute({ page: 'wins' })}
+            >
+              Wins
+            </button>
+          </li>
+          <li>
+            <button
               className={navClass(route.page === 'maintenance')}
               aria-current={route.page === 'maintenance' ? 'page' : undefined}
               onClick={() => setRoute({ page: 'maintenance' })}
@@ -197,6 +236,17 @@ export function App() {
             </button>
           </li>
         </ul>
+        <div className="mt-6 space-y-1 border-t border-line pt-4">
+          <button className={navClass(false)} onClick={() => setOverlay('briefing')}>
+            Morning briefing
+          </button>
+          <button className={navClass(false)} onClick={() => pageProps.focus(null)}>
+            Focus session
+          </button>
+          <button className={navClass(false)} onClick={() => setOverlay('shutdown')}>
+            Shutdown
+          </button>
+        </div>
         <p data-testid="sidebar-version" className="mt-auto px-3 pt-4 text-xs text-ink-muted">
           {version ? `Version ${version}` : ''}
         </p>
@@ -212,6 +262,7 @@ export function App() {
           {route.page === 'upcoming' && <UpcomingPage {...pageProps} />}
           {route.page === 'someday' && <SomedayPage {...pageProps} />}
           {route.page === 'area' && <AreaPage {...pageProps} areaId={route.areaId} />}
+          {route.page === 'wins' && <WinsPage />}
           {route.page === 'maintenance' && <MaintenancePage />}
           {route.page === 'settings' && <SettingsPage updater={updater} />}
         </div>
@@ -232,6 +283,31 @@ export function App() {
           onOpenMaintenance={() => setRoute({ page: 'maintenance' })}
         />
       )}
+      {focusStart && (
+        <FocusStart
+          taskId={focusStart.taskId}
+          taskTitle={focusStart.title}
+          onCancel={() => setFocusStart(null)}
+          onStarted={(started) => {
+            setFocusStart(null);
+            setSession(started);
+          }}
+        />
+      )}
+      {session && (
+        <FocusScreen session={session} sound={soundOn} onEnded={() => setSession(null)} />
+      )}
+      {overlay === 'briefing' && <MorningBriefing onClose={() => setOverlay(null)} />}
+      {overlay === 'shutdown' && (
+        <ShutdownRitual
+          onClose={() => setOverlay(null)}
+          onSortInbox={() => {
+            setOverlay(null);
+            setRoute({ page: 'inbox' });
+          }}
+        />
+      )}
+      <Celebration />
       <UndoToast />
     </div>
   );

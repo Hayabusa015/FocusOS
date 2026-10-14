@@ -198,3 +198,60 @@
     }
   }
 }
+
+@layer components {
+  /* --- Celebration ------------------------------------------------------------------------ */
+  .xp-pill {
+    animation: xp-rise 2.6s ease-out forwards;
+  }
+  .confetti-piece {
+    position: fixed;
+    top: -1rem;
+    width: 0.5rem;
+    height: 0.9rem;
+    border-radius: 0.1rem;
+    opacity: 0;
+    animation: confetti-fall 2.4s ease-in forwards;
+    pointer-events: none;
+  }
+
+  @keyframes xp-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.9);
+    }
+    12% {
+      opacity: 1;
+      transform: translateY(0) scale(1.05);
+    }
+    20% {
+      transform: scale(1);
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-1.25rem);
+    }
+  }
+  @keyframes confetti-fall {
+    0% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--drift, 0), 105vh, 0) rotate(var(--spin, 540deg));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti-piece {
+      display: none;
+    }
+    .xp-pill {
+      animation: none;
+    }
+  }
+}

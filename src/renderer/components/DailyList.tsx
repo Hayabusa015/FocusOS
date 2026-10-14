@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Area, TodayView } from '@shared/core';
+import type { Area, Task, TodayView } from '@shared/core';
 import { errorMessage } from '@/hooks/useLive';
 import { ErrorNote } from './ui';
 import { TaskList } from './TaskList';
@@ -12,10 +12,12 @@ export function DailyList({
   today,
   areas,
   openTask,
+  onFocus,
 }: {
   today: TodayView;
   areas: Area[];
   openTask(id: string): void;
+  onFocus?(task: Task): void;
 }) {
   const [error, setError] = useState<string | null>(null);
   return (
@@ -26,6 +28,7 @@ export function DailyList({
         doneTasks={today.doneToday}
         areas={areas}
         onOpen={openTask}
+        onFocus={onFocus}
         onError={setError}
         emptyText="Nothing on today's list yet. Add the first thing below."
         addPlaceholder="Add to today and press Enter"
