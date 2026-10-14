@@ -19,8 +19,9 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 | 4 | Atlas (voice) | Not started |
 | 5 | Google Calendar and Gmail | Not started |
 | 6 | Obsidian second brain | Not started |
-| 7 | WorkWork bridge | Not started |
-| 8 | Polish and install | Not started |
+| 7 | Knowledge and learning | Not started |
+| 8 | WorkWork bridge | Not started |
+| 9 | Polish and install | Not started |
 
 The builder updates this table and nothing else in this file without asking (see `CLAUDE.md`).
 
@@ -66,11 +67,14 @@ Every feature is judged against three questions:
 - Accomplishments: XP, levels, progress bars, a forgiving streak, a wins log and achievements
 - Morning briefing and end-of-day shutdown ritual
 - Focus sessions (a timer that hides everything else)
-- Atlas: chat with Claude, tool calls into the app, brain-dump parsing
+- Atlas: chat with Claude, tool calls into the app, brain-dump parsing, and focused modes (Sorter,
+  Planner, Scribe, Reviewer) that propose and never act on their own (§7.8)
 - Atlas voice: a designed voice through VoiceStudio and push-to-talk input
 - Google Calendar (personal account): read events and write time blocks
 - Gmail (personal account): email triage into suggested tasks, user-approved
 - Obsidian second brain: notes, daily notes and searchable knowledge stored in the user's vault (§11A)
+- Knowledge: a read-only search index over school files (through Google Drive for desktop) and the
+  vault, plus "what Atlas knows about you": local insights and user-approved facts (§11C)
 - WorkWork bridge: read-only class units for Chemistry, Physics and Geology
 - Windows installer, tray icon, start at login, local backups
 - **Self-update:** Cortex finds new releases on GitHub and offers to install them (§11B)
@@ -78,7 +82,9 @@ Every feature is judged against three questions:
 ### Not in v1
 
 - Phone or any second device
-- The school Google account
+- The school Google account through the Google APIs (school files arrive through Drive for desktop
+  instead, §11C)
+- Text from native Google Docs, Slides and Sheets (they are indexed by name and folder only, §11C)
 - Habits tracking (the Dayglide sample has it, but it wasn't asked for; candidate for v2)
 - Writing anything into WorkWork
 - Editing the user's existing Obsidian notes (Cortex writes only inside its own vault folder), an
@@ -135,6 +141,7 @@ Every feature is judged against three questions:
 | Google | `googleapis` | §9 |
 | Updates | `electron-updater`, with GitHub Releases as the feed | §11B |
 | Vault files | `gray-matter` for frontmatter and `chokidar` for watching the vault folder | §11A |
+| File text | `mammoth` (.docx), `jszip` (.pptx slide XML), `pdfjs-dist` (.pdf) | §11C |
 | Unit tests | Vitest | |
 | End-to-end tests | Playwright, Electron mode | |
 | Lint and format | ESLint and Prettier | |
@@ -163,6 +170,7 @@ cortex/
 ├── CLAUDE.md                  rules for whoever builds this
 ├── docs/PLAN.md               this file
 ├── docs/VOICESTUDIO.md        written in Phase 4: the verified API, not guesses
+├── .claude/agents/auditor.md  build-time Auditor: checks each phase against this plan (§16)
 ├── CHANGELOG.md               one section per released version; becomes the release notes
 ├── .github/workflows/release.yml   builds and publishes a release when the version is bumped
 ├── src/
@@ -170,12 +178,13 @@ cortex/
 │   │   ├── index.ts           app lifecycle, windows, tray, global shortcuts
 │   │   ├── ipc/               one file per domain; every channel Zod-validated
 │   │   ├── db/                connection, migrations/NNN_name.sql, repositories
-│   │   ├── domain/            pure logic: tasks, recurrence, xp, maintenance, streaks
+│   │   ├── domain/            pure logic: tasks, recurrence, xp, maintenance, streaks, insights
 │   │   ├── scheduler.ts       reminders, morning briefing, shutdown ritual triggers
-│   │   ├── atlas/             Claude client, tools, prompts, cost ledger
+│   │   ├── atlas/             Claude client, tools, persona.ts, modes/, cost ledger
 │   │   ├── voice/             VoiceStudio client, audio cache, fallback
 │   │   ├── google/            oauth, calendar, gmail, triage
-│   │   ├── obsidian/          vault reader/writer, daily note, search index
+│   │   ├── obsidian/          vault reader/writer, daily note
+│   │   ├── knowledge/         sources, text extraction, the shared search index, facts
 │   │   ├── updater.ts         update check, prompt, download, install
 │   │   ├── workwork/          read-only DECISIONS.md reader
 │   │   └── secrets.ts         safeStorage wrapper
@@ -304,9 +313,12 @@ transcript, with one conversation per day.
 **`api_usage`**: `id`, `route`, `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`,
 `cache_write_tokens`, `est_cost_usd`, `created_at`.
 
-**`vault_index`**: an SQLite FTS5 table (`path`, `title`, `body`, `mtime`) that makes the vault
-searchable. It is a **derived cache**, rebuilt from the vault files at any time, and is never the
-source of any note's content (§11A).
+**`knowledge_sources`**, **`knowledge_files`** and **`knowledge_chunks`** (an FTS5 table): the one
+search index over the vault and every knowledge source. They are **derived caches**, rebuilt from
+the files at any time, and never the source of any file's content (§11C). Phase 6 creates them for
+the vault; Phase 7 adds the other sources.
+
+**`profile_facts`**: what Atlas knows about the user, each fact proposed or approved (§11C).
 
 **`settings`**: key and value JSON. Secrets are never stored here (see §12).
 
@@ -319,9 +331,12 @@ source of any note's content (§11A).
 | Route | What it does | Default model | Effort |
 |---|---|---|---|
 | `chat` | Conversation with tool use | `claude-opus-5-5` | `low` |
-| `braindump` | A rambling capture becomes a structured task list | `claude-opus-5-5` | `low` |
+| `sorter` | Proposes an area and date for each inbox item (§7.8) | `claude-opus-5-5` | `low` |
+| `planner` | Proposes a schedule for the rest of today (§7.8) | `claude-opus-5-5` | `medium` |
+| `scribe` | A rambling capture becomes tasks and notes (§7.6, §7.8) | `claude-opus-5-5` | `low` |
 | `triage` | Email metadata becomes task proposals | `claude-opus-5-5` | `low` |
 | `briefing` | Morning summary text | `claude-opus-5-5` | `low` |
+| `reviewer` | Weekly review and proposed facts (§7.8, §11C) | `claude-opus-5-5` | `medium` |
 
 - The model and effort level for each route are **settings the user can change**. Settings lists
   `claude-opus-5-5`, `claude-sonnet-5-5` and `claude-haiku-5-5`.
@@ -341,7 +356,7 @@ are fixed:
   return a 400 error on these models.
 - **Forced tool choice:** do not use `tool_choice` `any` or `tool`. Both return a 400 error. Use
   `auto` with a prompt instruction instead.
-- **Structured outputs:** `braindump` and `triage` return JSON through `output_config.format`, not
+- **Structured outputs:** `sorter`, `planner`, `scribe`, `triage` and `reviewer` return JSON through `output_config.format`, not
   through a forced tool call.
 - **Streaming:** `chat` streams so that text can be spoken sentence by sentence (§8.3).
 - **Refusal handling:** check `stop_reason` before reading content. Enable the server-side fallback
@@ -375,8 +390,9 @@ are fixed:
 | `start_focus_session` | |
 | `log_maintenance_done` | |
 | `get_progress` | XP, level, streak, per-area progress |
-| `search_notes` | Searches the Obsidian vault (§11A). Only present when a vault is connected |
-| `read_note` | Reads one note, truncated. Respects the excluded folders |
+| `search_notes` | Searches the Obsidian vault (§11A). Only present when a vault is connected. Becomes `search_knowledge` in Phase 7 (§11C) |
+| `read_note` | Reads one note, truncated. Respects the excluded folders. Becomes `read_passages` in Phase 7 (§11C) |
+| `remember_fact` | Saves a fact the user explicitly asked Atlas to remember (§11C). Phase 7 |
 | `create_note` | Creates a note inside the vault's `Cortex/` folder only |
 | `append_to_note` | Appends to a note inside the vault's `Cortex/` folder only |
 | `list_areas` | |
@@ -420,6 +436,41 @@ Tools that are **not** given to Atlas:
 - Settings shows spend for today, this week and this month.
 - **Optional monthly cap:** when it is reached, Atlas routes refuse with a clear message and
   everything else keeps working.
+
+### 7.8 Atlas modes (the in-app agents)
+
+Atlas is **one assistant with one persona**. A *mode* is a focused job: its own instructions, its
+own route in §7.1, and **only the tools that job needs**. Modes are not separate programs, and none
+of them runs in the background on its own except the Reviewer's weekly schedule.
+
+| Mode | Started from | Job | Tools | Can change data? | Phase |
+|---|---|---|---|---|---|
+| **Atlas (chat)** | The Atlas panel | General conversation | All of §7.3 | Yes, what the user asks for, with undo | 3 |
+| **Sorter** | Inbox → **Sort with Atlas** | Proposes an area, date and size for each inbox item | `list_areas`, `list_tasks` (read-only) | **No.** Returns proposals; the user approves the batch | 3 |
+| **Planner** | **Plan the rest of today** | Fits tasks into the free time left today, around calendar events | `get_today`, `list_tasks`, `get_upcoming` (read-only) | **No.** Returns a proposed schedule; the user accepts all, some or none | 3 |
+| **Scribe** | Brain dump, voice capture, "note that…" | Turns rambling input into tasks and notes; writes the daily note text | Structured output (§7.6); `create_note` once Phase 6 lands | Only after the user presses **Add** | 3, notes in 6 |
+| **Reviewer** | Weekly, and **Run review** on the Wins page | Weekly review, pattern spotting, proposed "what Atlas knows about you" facts | Read-only tools plus the local insights in §11C | **No.** Everything it learns is a proposal | 7 |
+
+**How modes are built:**
+- Each mode is one file in `src/main/atlas/modes/`, holding its instructions, its tool list and its
+  output schema. The shared persona (§7.4) lives once in `src/main/atlas/persona.ts` and every mode
+  imports it.
+- **Sorter, Planner, Scribe and Reviewer return structured output** (`output_config.format`) that
+  the UI shows as an editable proposal. They are given no tool that changes data. That is enforced
+  by the tool list, not just by instructions.
+- **The Planner** uses the user's real task durations once the Knowledge phase provides them
+  (§11C). Before that it uses size defaults: `s` = 15 min, `m` = 45, `l` = 90.
+- **The Planner always leaves slack:** at least 20% of the free time it plans stays unscheduled, and
+  it never plans past the end of the day window.
+- **The Sorter** must pick areas from the user's real area list, or leave the area empty. It never
+  invents an area.
+
+**Agents considered and left for later** (add one only when the user feels the need):
+- **Coach:** the "one next step when overwhelmed" behaviour is already in the persona (§7.4).
+- **Prep planner:** suggests prep tasks from the calendar and the WorkWork curriculum. A good
+  candidate after Phase 8.
+- **Librarian:** the Knowledge search (§11C) covers "find my file" for now.
+- **Keeper:** home maintenance reminders already cover it.
 
 ---
 
@@ -669,7 +720,7 @@ Quiet hours are respected.
   - Port the logic from WorkWork `app/curriculum.mjs`. It handles the three heading formats the
     files actually use.
   - Tests run against fixture copies of the three real files, taken from the WorkWork commit
-    current when Phase 7 starts.
+    current when Phase 8 starts.
 - **What it provides:** a unit/section picker on class-area tasks. Tasks store only the code
   string, for example `U4/S4.2`.
 - **Guardrails:**
@@ -700,8 +751,12 @@ sync.
 
 - **No plugin and no Obsidian process needed.** A vault is a folder of `.md` files, so Cortex reads
   and writes the folder directly. Obsidian doesn't have to be running.
-- **Setting:** the vault folder, chosen with a folder picker. Cortex checks that it contains a
-  `.obsidian/` folder and refuses anything else.
+- **Setting:** two choices.
+  - **Create a new vault** (the default, since the user has never used Obsidian): Cortex creates
+    `Documents/Cortex Vault/` with an empty `.obsidian/` folder inside it, so Obsidian can open it
+    later.
+  - **Use an existing vault:** a folder picker. Cortex checks that the folder contains `.obsidian/`
+    and refuses anything else.
 - **Opening notes:** "Open in Obsidian" uses `obsidian://open?vault=<name>&file=<path>`.
 - With no vault set, the notes features are hidden and everything else works.
 
@@ -762,7 +817,8 @@ sync.
 
 ### Search
 
-- A background scan fills the `vault_index` FTS5 table, and `chokidar` keeps it current.
+- A background scan fills the shared knowledge index (§11C) for the vault source, and `chokidar`
+  keeps it current.
 - Settings has **Rebuild index**, which drops and refills it. The index holds no information that
   isn't in the files.
 - Search results show the title, a snippet and the path. Clicking opens the note in Obsidian.
@@ -853,6 +909,129 @@ VoiceStudio updates itself separately, and Cortex neither checks for nor install
 
 ---
 
+## 11C. Knowledge: your school files and what Atlas learns about you
+
+Claude does not retrain on anything. In Cortex, "learning" means two concrete things, and both stay
+on this PC except the passages Atlas reads for a request:
+
+1. **Knowing your files:** a read-only search index over folders the user picks.
+2. **Knowing you:** patterns computed from your own Cortex history, turned into short facts you
+   approve.
+
+### Knowledge sources
+
+- A **knowledge source** is a local folder Cortex indexes read-only. Settings → Knowledge lists the
+  sources, each with an on/off switch, a "last indexed" time, a file count, and errors.
+- **The Obsidian vault is a source automatically** once it's connected (§11A). The vault's search
+  and the file search are **one index and one search box**.
+- **The main school source is Google Drive for desktop.** It is signed in with the school account
+  and shows Drive as a folder on the PC. The user adds the `SHULL Science` folder. Cortex needs no
+  Google login for this, which avoids the school account's restrictions on third-party apps (§9).
+- **Read-only:** Cortex never creates, edits, moves, renames or deletes anything in a knowledge
+  source other than the vault's `Cortex/` folder. A test asserts this.
+
+### What gets indexed
+
+| File type | What Cortex stores in the index |
+|---|---|
+| `.docx` | Text (via `mammoth`) |
+| `.pptx` | Slide text (unzip and read the slide XML) |
+| `.pdf` | Text (via `pdfjs-dist`). Scanned PDFs with no text layer get title only |
+| `.md`, `.txt` | Text |
+| `.gdoc`, `.gslides` | **Title, path and link only** (see below) |
+| `.xlsx`, `.gsheet`, `.csv` | **Title and path only, by default.** Spreadsheets are often gradebooks. A setting can turn on text for chosen folders |
+| Anything else | Title and path |
+
+- **Native Google files are a limitation:** Drive for desktop represents Google Docs, Slides and
+  Sheets as small shortcut files that hold a link, not the document text. **Verify this on the
+  user's PC in Phase 7.** If it's true, those files are searchable by name and folder only, and
+  "Open" goes to the browser. Their text would need the Drive API on the school account, which is
+  out of scope (§9).
+- **Streaming mode:** Drive for desktop streams files by default, so reading one downloads it.
+  - Indexing runs slowly in the background (one file at a time), skips files over 25 MB, and can be
+    paused.
+  - The setup guide suggests marking `SHULL Science` "Available offline" so indexing doesn't
+    trigger thousands of downloads at once.
+- **Excluded folders** per source are always honoured. The setup screen asks the user to exclude
+  anything with grades, rosters, IEPs or other student records **before** the first scan runs.
+
+### The index
+
+- `knowledge_files` tracks each file: `source_id`, `path`, `size`, `mtime`, `content_hash`, `kind`,
+  `status` (`indexed`, `title_only`, `skipped`, `error`) and `error`.
+- `knowledge_chunks` is an FTS5 table of passages of about 1,500 characters: `file_id`, `chunk_no`,
+  `title`, `body`. Atlas reads the matching passages, not whole files.
+- **Both are derived caches.** **Rebuild index** in Settings drops and refills them. A file's content
+  lives in the file; the index holds nothing that can't be rebuilt.
+- `chokidar` watches enabled sources. A file whose `mtime` or hash changed is re-indexed.
+
+### Atlas and your files
+
+- **Tools:** `search_knowledge(query, source?, limit)` returns titles, paths and snippets.
+  `read_passages(file_id, query)` returns up to 3 matching passages, at most 6,000 characters in
+  total.
+- These replace `search_notes` and `read_note` from §7.3, which become the same tools filtered to the
+  vault source.
+- **Atlas reads only when the request calls for it,** and every read appears in the action log
+  ("Atlas read 2 passages from U4 Lab - Density.docx"), with the source shown.
+- **"Find my Unit 4 packet"** is answered from titles and paths alone and sends no file text to
+  Claude.
+
+### Knowing you: insights and facts
+
+**Insights** are plain statistics that Cortex computes locally in `domain/insights.ts`, with no AI:
+
+| Insight | Computed from |
+|---|---|
+| Real duration per area and size ("Chemistry `m` tasks take you about 55 min") | Focus sessions and time blocks linked to completed tasks |
+| When you finish things (by hour and weekday) | `completed_at` |
+| What you put off (areas and kinds of task with high `defer_count`) | `tasks.defer_count` |
+| Load by weekday | Tasks due and completed per weekday |
+| Estimate accuracy | Planned block length against actual |
+
+- An insight needs at least 5 data points before it is used or shown.
+- The Planner reads the duration insights directly (§7.8).
+
+**Facts** are short sentences Atlas keeps in mind, stored in `profile_facts`:
+
+| Column | Notes |
+|---|---|
+| `id`, `text` | At most 200 characters, for example "Coaches Tuesday and Thursday 3:30–5:30" |
+| `kind` | `preference`, `pattern` or `fact` |
+| `source` | `user` or `reviewer` |
+| `status` | `proposed`, `active` or `rejected` |
+| `evidence_json` | For a reviewer fact: the insight numbers behind it |
+
+- **"Remember that I coach Tuesdays"** said to Atlas creates an **active** fact through a
+  `remember_fact` tool, with undo, because the user asked directly.
+- **Reviewer facts start as `proposed`** and become active only when the user approves them.
+- **What Atlas knows about you** (a page under Settings) lists every active and proposed fact with
+  its evidence. Each one can be edited, approved, rejected or deleted.
+- Active facts (up to 40) go into the daily snapshot system message (§7.2), not the cached system
+  prompt.
+- Facts never contain student names. The Reviewer is instructed not to propose them, and the user
+  approves every Reviewer fact before it is used.
+
+### Weekly review (the Reviewer)
+
+- **When:** default Sunday 18:00, configurable, as a gentle notification. Also **Run review** on the
+  Wins page.
+- **Content:**
+  1. This week's wins and XP by area.
+  2. Carry-forward tasks, and tasks deferred 3 or more times, each with Do this week, Schedule,
+     Someday or Drop.
+  3. Maintenance coming due in the next 14 days.
+  4. Up to 5 **proposed facts**, each with the insight numbers behind it.
+- It writes `Cortex/Reviews/YYYY-[W]WW.md` when a vault is connected.
+- The Reviewer changes nothing. Every item is a button the user presses.
+
+### Offline core
+
+Without knowledge sources, without a vault, and with Atlas off, Cortex still works fully.
+Insights still compute and display; only the facts that need the Reviewer wait.
+
+---
+
 ## 12. Security and data
 
 - **Electron hardening:**
@@ -866,6 +1045,8 @@ VoiceStudio updates itself separately, and Cortex neither checks for nor install
 - **Data location:** `%APPDATA%/Cortex/` holds the database, audio cache, backups and logs.
 - **Vault boundary:** Cortex writes only inside `<vault>/Cortex/` (§11A) and reads only the folders
   the user's settings allow.
+- **Knowledge sources are read-only** (§11C). File text leaves the PC only as passages Atlas reads
+  for a request, each logged.
 - **Updates:** the app contacts GitHub only to read release information and download the installer
   (§11B). If the repository is private (Option B), the read-only token is stored with `safeStorage`.
 - **Backups:**
@@ -952,9 +1133,9 @@ not start the next phase until the current one is accepted by the user.
 - The API key in Settings (`safeStorage`).
 - The Atlas panel with streaming chat.
 - The tools in §7.3 and the Atlas undo toasts.
-- Brain dump.
-- "Plan the rest of today".
-- "Sort with Atlas" for the Inbox.
+- The modes in §7.8 that belong to this phase: **Sorter** (Sort with Atlas), **Planner** (Plan the
+  rest of today) and **Scribe** (brain dump). Each one has its own file in `atlas/modes/`, a
+  read-only tool list, and an editable proposal screen.
 - The cost ledger and cap.
 - The model and effort settings for each route.
 
@@ -963,6 +1144,10 @@ not start the next phase until the current one is accepted by the user.
 - "I finished it" after discussing a task completes it.
 - Every Atlas change can be undone.
 - A brain dump of a five-item ramble yields an editable checklist.
+- Sort with Atlas proposes an area for every inbox item and changes nothing until the user approves.
+- Plan the rest of today leaves at least 20% of free time unplanned and never runs past the day
+  window.
+- A test asserts that the Sorter, Planner and Scribe tool lists contain no tool that changes data.
 - The second turn shows cache reads above zero.
 - With no key set, the whole app still works.
 
@@ -1010,14 +1195,17 @@ runs only when a key is present.
   of the vault" switch.
 - The vault writer: atomic writes, safe file names, frontmatter, and the `Cortex/` boundary.
 - The daily note with its managed block, written at the end of the shutdown ritual and on demand.
-- The `vault_index` scan and watcher, with Rebuild index.
+- The shared knowledge index tables (§11C), with the vault as the first source, its watcher, and
+  Rebuild index.
 - Search in the UI and the Atlas tools `search_notes`, `read_note`, `create_note` and
   `append_to_note`.
 - A task's linked note: Create note, Open in Obsidian, and the `note_path` column.
 - Saving the `unparsed` text of a brain dump as an inbox note.
 
 **Acceptance:**
-- Choosing a folder without `.obsidian/` is refused.
+- Choosing an existing folder without `.obsidian/` is refused.
+- **Create a new vault** makes a folder that Obsidian opens as a vault (checked by opening it in
+  Obsidian on the user's PC), with Cortex's notes visible inside it.
 - Regenerating the daily note ten times leaves everything outside the markers byte for byte
   unchanged.
 - "Note that the syrup tray would make a good tectonics demo" creates a note in `Cortex/Notes/`,
@@ -1028,7 +1216,37 @@ runs only when a key is present.
   `Cortex/`.
 - Disconnecting the vault leaves every other feature working.
 
-### Phase 7: WorkWork bridge
+### Phase 7: Knowledge and learning
+
+**Before building:** ask the user to install Google Drive for desktop, sign in with the school
+account, and confirm the path of `SHULL Science` (§15). Then check on the user's PC how Docs, Slides
+and Sheets appear, and record the result here (§11C).
+
+**Build:**
+- Settings → Knowledge: add a folder source, excluded folders (asked **before** the first scan),
+  per-source on/off, pause indexing, status and errors.
+- Text extraction for the file types in §11C, background indexing one file at a time, the 25 MB
+  skip, and the watcher.
+- One search box over files and notes; results open the file or the browser link.
+- `search_knowledge`, `read_passages` and `remember_fact` for Atlas, with every read in the action
+  log.
+- `domain/insights.ts` with its tests, and the Planner switched to real durations.
+- `profile_facts` and the **What Atlas knows about you** page.
+- The **Reviewer** mode, the weekly review screen, its schedule, and the vault review note.
+
+**Acceptance:**
+- "Find my Unit 4 packet" returns the right file from titles and paths, with no file text sent to
+  Claude (checked in the action log).
+- "What's in my density lab?" reads at most 3 passages and names the file.
+- A file in an excluded folder never appears in search and can't be read.
+- A test diffs the source folder before and after indexing and finds no change.
+- Editing a `.docx` re-indexes it within a minute.
+- Insights appear only after 5 data points, and the Planner then uses real durations.
+- The weekly review proposes facts with evidence. None is used before the user approves it.
+- "Remember that I coach Tuesdays" creates an active fact that can be undone and shows on the
+  page.
+
+### Phase 8: WorkWork bridge
 
 **Build:**
 - The path setting.
@@ -1036,13 +1254,17 @@ runs only when a key is present.
 - The unit picker on class areas.
 - The unit progress bars.
 - The stale-code flag.
+- **Files for this unit:** when a knowledge source follows WorkWork's Drive folder grammar
+  (`Unit ## - Name/Section ##.# - Name`), tag those files with the unit and section code, so a class
+  task can show its unit's files. Read the grammar from WorkWork's `config/drive.json`; never copy
+  it into Cortex.
 
 **Acceptance:**
 - All units for the three courses appear with section counts matching the decisions files.
 - Removing a unit from a fixture flags the tasks that used it.
 - Nothing is ever written to the WorkWork folder (a test asserts this).
 
-### Phase 8: Polish and install
+### Phase 9: Polish and install
 
 **Build:**
 - Start at login (optional).
@@ -1062,7 +1284,8 @@ runs only when a key is present.
 
 - **Unit tests (Vitest):** everything in `domain/` (XP, levels, streaks, recurrence, maintenance,
   shorthand parsing), the repositories against a temporary database, the Zod schemas, the WorkWork
-  parser, and the triage and braindump output handling.
+  parser, the text extractors (fixture files of each type), insights, and the structured output
+  handling of every mode.
 - **End-to-end tests (Playwright for Electron):**
   - Capture to Inbox, then to an area, then complete it and see XP rise.
   - The shutdown ritual.
@@ -1090,16 +1313,26 @@ Ask each one when the phase that needs it starts.
    Settings.
 6. **(Phase 3)** Do you want a **monthly spending cap**, and at what amount?
 7. **(Phase 4)** After you hear the candidates, which **voice** is Atlas?
-8. **(Phase 6)** Do you already have an **Obsidian vault**? Where is it? Should Cortex use a new
-   `Cortex/` folder inside it, or a vault of its own?
-9. **(Phase 6)** Do you already use Obsidian's **Daily Notes** plugin? If so, do you want Cortex's
-   daily summary in your existing daily notes instead of `Cortex/Daily/`? (The default keeps them
-   separate, since Cortex writes only inside `Cortex/`.)
+8. ~~(Phase 6) Do you already have an Obsidian vault?~~ **Answered 2026-10-14: no.** Phase 6 offers
+   to create a new vault folder (default `Documents/Cortex Vault`) and the user can install Obsidian
+   later to browse it.
+9. ~~(Phase 6) Do you already use Obsidian's Daily Notes plugin?~~ **Answered 2026-10-14:** the
+   user has never used Obsidian, so Cortex creates a fresh vault and keeps everything in
+   `Cortex/`. Keep this feature quiet; Cortex must work without Obsidian installed.
+10. **(Phase 7)** Does **Google Drive for desktop** install and sign in with the school account on
+    your PC, and what is the path to `SHULL Science`? Which folders hold grades, rosters or other
+    student records, so they can be excluded?
+11. **(Phase 7)** Is **Sunday 18:00** right for the weekly review?
 
 ---
 
 ## 16. Handoff to the builder
 
-Read `CLAUDE.md`, then this file, then build Phase 0. Stop at the end of each phase and report
-using the acceptance list as a table (pass or fail, with evidence). Do not guess at anything this
+Read `CLAUDE.md`, then this file, then build Phase 0. At the end of each phase, run the **Auditor**
+(`.claude/agents/auditor.md`) as a subagent, fix what it reports, and run it again until it passes.
+Then report to the user using the acceptance list as a table (pass or fail, with evidence),
+including the Auditor's final report.
+
+**Build-time helpers considered and left for later:** Architect, Tester, Security reviewer and
+Release manager. Add one only when a phase shows the need. Do not guess at anything this
 plan marks as unverified. Verify it, or ask.
