@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react';
+import { Schedule } from '@/components/Schedule';
 import { PlanDialog } from '@/components/atlas/PlanDialog';
-import { Card, ErrorNote, SectionTitle, buttonQuiet, AreaDot } from '@/components/ui';
+import { Card, ErrorNote, SectionTitle, buttonQuiet } from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { TaskList } from '@/components/TaskList';
 import { useLive, errorMessage } from '@/hooks/useLive';
-import { indexAreas } from '@/lib/areas';
-import { minutesText, timeOfIso } from '@/lib/dates';
+import { minutesText } from '@/lib/dates';
 import { greeting } from '@/lib/format';
 import type { PageProps } from './types';
 
@@ -14,7 +14,6 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
   const { data: today, error } = useLive(load, 30_000);
   const [actionError, setActionError] = useState<string | null>(null);
   const [planning, setPlanning] = useState(false);
-  const byId = indexAreas(areas);
   const now = new Date();
 
   const run = (action: () => Promise<unknown>) => {
@@ -103,26 +102,8 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
 
           {today.blocks.length > 0 && (
             <section aria-label="Timeline" className="mb-6">
-              <SectionTitle>Timeline</SectionTitle>
-              <ol className="space-y-1">
-                {today.blocks.map((b) => (
-                  <li
-                    key={b.taskId}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-raised"
-                  >
-                    <span className="w-28 shrink-0 text-xs tabular-nums text-ink-muted">
-                      {timeOfIso(b.start)} – {timeOfIso(b.end)}
-                    </span>
-                    <AreaDot area={b.areaId ? byId.get(b.areaId) : null} />
-                    <button
-                      className={`min-w-0 flex-1 truncate text-left text-sm ${b.status === 'done' ? 'text-ink-muted line-through' : ''}`}
-                      onClick={() => openTask(b.taskId)}
-                    >
-                      {b.title}
-                    </button>
-                  </li>
-                ))}
-              </ol>
+              <SectionTitle>Schedule</SectionTitle>
+              <Schedule today={today} areas={areas} openTask={openTask} />
             </section>
           )}
 

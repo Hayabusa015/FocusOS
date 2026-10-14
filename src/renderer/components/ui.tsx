@@ -135,6 +135,8 @@ export function ErrorNote({ message }: { message: string | null }) {
 
 /** The gold "Press" button: lifts on hover, sinks when pressed. */
 export const buttonPrimary = 'btn btn-press';
+/** The violet action: "Plan the rest of today". */
+export const buttonViolet = 'btn btn-violet';
 export const buttonQuiet =
   'rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50';
 export const inputClass =
@@ -200,5 +202,29 @@ export function Loading({ label = 'Loading' }: { label?: string }) {
         aria-label={label}
       />
     </div>
+  );
+}
+
+/** A row of small bars, filled for each thing done. A count, not a percentage. */
+export function Segments({
+  done,
+  total,
+  fill = 'bg-brand-violet',
+  max = 10,
+}: {
+  done: number;
+  total: number;
+  /** A Tailwind background class for the filled bars. */
+  fill?: string;
+  max?: number;
+}) {
+  const bars = Math.min(Math.max(total, 1), max);
+  const filled = total === 0 ? 0 : Math.round((Math.min(done, total) / total) * bars);
+  return (
+    <span className="flex gap-1" aria-hidden>
+      {Array.from({ length: bars }, (_, i) => (
+        <span key={i} className={`h-1.5 flex-1 rounded-full ${i < filled ? fill : 'bg-raised'}`} />
+      ))}
+    </span>
   );
 }

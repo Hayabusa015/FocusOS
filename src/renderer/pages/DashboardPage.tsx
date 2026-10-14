@@ -1,5 +1,16 @@
-import { useCallback } from 'react';
-import { ErrorNote, SectionTitle, Sheet, buttonPrimary, buttonQuiet } from '@/components/ui';
+import { useCallback, useState } from 'react';
+import { PlanDialog } from '@/components/atlas/PlanDialog';
+import { DayGauge } from '@/components/DayGauge';
+import { Schedule } from '@/components/Schedule';
+import {
+  ErrorNote,
+  Segments,
+  SectionTitle,
+  Sheet,
+  buttonPrimary,
+  buttonQuiet,
+  buttonViolet,
+} from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { useLive } from '@/hooks/useLive';
 import { areaColor, indexAreas } from '@/lib/areas';
@@ -8,36 +19,33 @@ import { greeting } from '@/lib/format';
 import type { PageProps } from './types';
 import { LevelBar, StreakDots } from './WinsPage';
 
-/** One number of the day. The first one is large; the rest sit beside it, divided by a rule. */
-function Figure({
+/** One number of the day with a row of bars under it. Pressing it goes to where it lives. */
+function Stat({
   label,
   value,
   note,
   onClick,
   testId,
-  big = false,
+  bars,
 }: {
   label: string;
   value: string;
   note?: string;
   onClick?: () => void;
   testId: string;
-  big?: boolean;
+  bars?: React.ReactNode;
 }) {
   return (
     <button
       data-testid={testId}
       onClick={onClick}
-      className={`flex flex-col items-start text-left transition-colors hover:text-accent-soft ${
-        big ? 'pr-8' : 'border-l border-line px-6'
-      }`}
+      className="flex flex-col items-stretch gap-2 text-left transition-colors hover:text-accent-soft"
     >
-      <span
-        className={`tabular-nums font-bold tracking-tight ${big ? 'text-6xl leading-none' : 'text-3xl'}`}
-      >
-        {value}
+      <span className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold tabular-nums tracking-tight">{value}</span>
+        <span className="text-sm font-medium">{label}</span>
       </span>
-      <span className="mt-2 text-sm font-medium">{label}</span>
+      {bars}
       {note && <span className="text-xs text-ink-muted">{note}</span>}
     </button>
   );
@@ -57,6 +65,7 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
   const { data: summary } = useLive(loadSummary);
   const byId = indexAreas(areas);
   const now = new Date();
+  const [planning, setPlanning] = useState(false);
 
   const comingUp = (upcoming?.days ?? [])
     .filter((d) => d.date !== null && d.date !== today?.date)
@@ -79,83 +88,115 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
           <button className={buttonQuiet} onClick={() => focus(null)}>
             Start a focus session
           </button>
+          <button className={buttonViolet} onClick={() => setPlanning(true)}>
+            Plan the rest of today
+          </button>
           <button className={buttonPrimary} onClick={() => newTask()}>
             Add task
           </button>
         </div>
       </header>
       <ErrorNote message={error} />
+      {planning && <PlanDialog onClose={() => setPlanning(false)} />}
 
       {today && (
         <>
-          <div className="mb-8 flex flex-wrap items-end gap-y-4">
-            <Figure
-              big
-              testId="tile-today"
-              label="done today"
-              value={`${today.counters.tasksDone} of ${today.counters.tasksTotal}`}
-              note={
-                today.arc.phase === 'during'
-                  ? `${minutesText(today.arc.minutesLeft)} left in your day`
-                  : undefined
-              }
-              onClick={() => go({ page: 'today' })}
-            />
-            <Figure
-              testId="tile-due"
-              label="still to do"
-              value={String(today.dueToday.length)}
-              note={
-                today.carryForward.length > 0
-                  ? `${today.carryForward.length} carried forward`
-                  : undefined
-              }
-              onClick={() => go({ page: 'today' })}
-            />
-            <Figure
-              testId="tile-inbox"
-              label="in your inbox"
-              value={String(inbox?.length ?? 0)}
-              note="to sort"
-              onClick={() => go({ page: 'inbox' })}
-            />
-            <Figure
-              testId="tile-xp"
-              label="XP today"
-              value={String(today.counters.xpToday)}
-              note={`${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'}`}
-              onClick={() => go({ page: 'wins' })}
-            />
-          </div>
+          <Sheet label="Today at a glance" className="mb-6">
+            <SectionTitle>Today at a glance</SectionTitle>
+            <div className="grid items-center gap-8 md:grid-cols-[17rem_1fr]">
+              <DayGauge today={today} />
+              <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Stat
+                    testId="tile-today"
+                    label="tasks"
+                    value={`${today.counters.tasksDone} of ${today.counters.tasksTotal}`}
+                    bars={
+                      <Segments done={today.counters.tasksDone} total={today.counters.tasksTotal} />
+                    }
+                    onClick={() => go({ page: 'today' })}
+                  />
+                  <button
+                    data-testid="tile-due"
+                    onClick={() => go({ page: 'today' })}
+                    className="self-start text-xs text-ink-muted hover:text-accent-soft"
+                  >
+                    {today.dueToday.length} left
+                    {today.carryForward.length > 0 &&
+                      ` · ${today.carryForward.length} carried forward`}
+                  </button>
+                </div>
+                <Stat
+                  testId="tile-blocks"
+                  label="blocks"
+                  value={`${today.counters.blocksDone} of ${today.counters.blocksTotal}`}
+                  bars={
+                    <Segments
+                      done={today.counters.blocksDone}
+                      total={today.counters.blocksTotal}
+                      fill="bg-area-chemistry"
+                    />
+                  }
+                  note={
+                    today.nowBlock
+                      ? 'one in progress'
+                      : today.counters.blocksTotal === 0
+                        ? 'nothing scheduled'
+                        : undefined
+                  }
+                  onClick={() => go({ page: 'today' })}
+                />
+                <Stat
+                  testId="tile-inbox"
+                  label="in your inbox"
+                  value={String(inbox?.length ?? 0)}
+                  note="to sort"
+                  onClick={() => go({ page: 'inbox' })}
+                />
+                <Stat
+                  testId="tile-xp"
+                  label="XP today"
+                  value={String(today.counters.xpToday)}
+                  bars={
+                    <Segments
+                      done={Math.min(today.counters.winsToday, 3)}
+                      total={3}
+                      fill="bg-accent"
+                    />
+                  }
+                  note={`${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'} (3 make an active day)`}
+                  onClick={() => go({ page: 'wins' })}
+                />
+              </div>
+            </div>
+          </Sheet>
 
-          <div
-            aria-label="Now and next"
-            role="region"
-            className="mb-8 border-l-[3px] border-accent pl-4"
-          >
-            {today.nowBlock ? (
-              <p>
-                <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
-                  Now
-                </span>
-                <span className="ml-3 text-lg font-medium">{today.nowBlock.title}</span>
-                <span className="ml-3 text-sm text-ink-muted">
-                  {minutesText(today.nowBlock.minutesLeft)} left
-                </span>
-              </p>
+          <Sheet label="Schedule" className="mb-6">
+            <SectionTitle
+              hint={
+                today.nextBlock
+                  ? `Next: ${today.nextBlock.title} in ${minutesText(today.nextBlock.startsInMinutes)}`
+                  : undefined
+              }
+            >
+              Schedule
+            </SectionTitle>
+            {today.blocks.length > 0 ? (
+              <Schedule today={today} areas={areas} openTask={openTask} />
             ) : (
-              <p className="text-ink-muted">Nothing scheduled right now.</p>
-            )}
-            {today.nextBlock && (
-              <p className="mt-1 text-sm text-ink-muted">
-                <span className="text-xs font-semibold uppercase tracking-wide">Next</span>
-                <span className="ml-3 text-ink">{today.nextBlock.title}</span>
-                <span className="ml-3">in {minutesText(today.nextBlock.startsInMinutes)}</span>
+              <p className="text-sm text-ink-muted">
+                Nothing scheduled right now. Use Plan the rest of today to fit your tasks into the
+                time you have left.
               </p>
             )}
-          </div>
+            {today.nowBlock && (
+              <p className="sr-only">
+                Now: {today.nowBlock.title}, {minutesText(today.nowBlock.minutesLeft)} left
+              </p>
+            )}
+          </Sheet>
 
-          <div className="mb-8 grid gap-10 lg:grid-cols-[3fr_2fr]">
+          <div className="mb-8 grid gap-8 lg:grid-cols-[3fr_2fr]">
             <Sheet label="Today's list">
               <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
               <DailyList

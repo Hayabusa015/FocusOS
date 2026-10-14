@@ -5,18 +5,20 @@ release notes, and refuses to publish a version that has none (PLAN §11B).
 
 ## [0.3.1] - 2026-10-14
 
-A new look that gets out of the way. Nothing works differently.
+A dark look, and a day you can read at a glance. Nothing works differently.
 
-- **A dark side rail.** The navigation now uses the logo's near-black, with a gold bar marking the
-  page you are on, so the brand frames the app instead of being sprinkled on it.
-- **Fewer boxes.** Sections sit on the page, divided by thin rules and space. The one thing that
-  keeps a raised sheet is the list you act on (today's list).
-- **The day at a glance.** The Dashboard opens with one large figure ("1 of 4 done today") and the
-  rest of the day's numbers beside it, instead of four identical tiles.
-- **Area colour where it means something.** Every task has a coloured edge for its area, and the
-  area list on the Dashboard uses the same edge.
-- **Achievements as a plain list**, unlocked ones marked in gold, instead of a wall of cards.
-- Sharper corners, flat buttons (no glow or lift), and bolder page titles.
+- **Dark theme.** A near-black page with your gold and violet, a darker side rail, and a gold bar
+  marking the page you are on. (The light day-grey look is gone for now.)
+- **Today at a glance** on the Dashboard: a half-circle gauge for your day window (the time, and how
+  long is left), and your tasks, blocks, inbox and XP each with a row of small bars.
+- **A real schedule.** Your time blocks in order, tinted with their area's colour, the block you are
+  in outlined, and a line with the time showing where now falls. On the Dashboard and on Today.
+- **Plan the rest of today** is a violet button on the Dashboard, and an **Ask Atlas** button floats
+  at the bottom right.
+- **Area colour where it means something:** every task has a coloured edge for its area, and so does
+  each area on the Dashboard.
+- Fewer boxes (sections sit on the page, divided by thin rules), achievements as a plain list,
+  sharper corners, flat buttons, and bolder titles.
 
 ## [0.3.0] - 2026-10-14
 

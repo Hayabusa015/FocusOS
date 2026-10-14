@@ -298,6 +298,14 @@ export function App() {
           onPlan={() => setAtlasDialog('plan')}
         />
       )}
+      {!atlasOpen && (
+        <button
+          onClick={() => setAtlasOpen(true)}
+          className="fixed bottom-6 right-6 z-30 rounded-full border border-brand-violet bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-lg transition-colors hover:bg-raised"
+        >
+          Ask Atlas
+        </button>
+      )}
       {atlasDialog === 'dump' && (
         <BrainDumpDialog areas={areas} onClose={() => setAtlasDialog(null)} />
       )}

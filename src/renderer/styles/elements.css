@@ -33,6 +33,18 @@
     transform: translateY(1px);
   }
 
+  /* The second action on a page (planning the day): violet fill, light text. */
+  .btn-violet {
+    background: var(--color-brand-violet);
+    color: var(--color-ink);
+  }
+  .btn-violet:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+  .btn-violet:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
   /* --- Switches ----------------------------------------------------------------------- */
   .switch {
     position: relative;
