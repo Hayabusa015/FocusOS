@@ -3,6 +3,31 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.3.0] - 2026-10-14
+
+Atlas can talk, and do things you ask, once you give it an API key. Nothing in Cortex needs it.
+
+- **The Atlas panel** (sidebar, or Ctrl J): chat with streaming replies. "Add grade lab reports to
+  Chemistry for Friday" adds the task; "I finished it" completes the one you were talking about.
+  Atlas can list, add, change, finish and move tasks, put a task on the timeline, start a focus
+  session, log home maintenance, and tell you how the day and your progress look. It can archive a
+  task (Undo brings it back) but never delete anything for good, send email or change settings.
+- **Every Atlas change can be undone.** A toast says what it did ("Atlas: Added …") with Undo, and
+  the panel lists everything Atlas changed today, each with its own Undo.
+- **Sort with Atlas** (Inbox): proposes an area, a date and a size for every inbox item. You can
+  edit or untick anything; nothing changes until you press Apply, and Undo all reverses it.
+- **Plan the rest of today** (Today and the panel): proposes time blocks for what is left. It never
+  plans past the end of your day, never over something already scheduled, and always leaves at
+  least 20% of the free time open. You accept all, some or none.
+- **Brain dump** (Inbox and the panel): ramble, and Atlas turns it into a checklist of tasks. It
+  is pre-ticked and editable; nothing is saved until you press Add. Things that are not tasks are
+  shown, not saved.
+- **Settings → Atlas:** your API key (encrypted by Windows, in its own file, never shown again),
+  the model and effort for each job (defaults: Opus 5.5), a monthly spending cap, and what you have
+  spent today, this week and this month.
+- With no key, Atlas says so in plain words and the rest of Cortex works exactly as before. A
+  rate limit, a rejected key or no connection shows a clear message and nothing else changes.
+
 ## [0.2.0] - 2026-10-14
 
 Getting things done now counts, and the day has a beginning and an end.

@@ -15,7 +15,7 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 | 0 | Scaffold, release pipeline and updater | Built; waiting on the user's checks. SQLite: `node:sqlite`, FTS5 confirmed. Unsigned-build update result: not yet verified (needs the user's PC). See `docs/RELEASING.md` |
 | 1 | Core tasks | Built (0.1.0); waiting on the user's checks on Windows: the capture hotkey, notifications and the tray. The three Phase 1 questions in §15 are still open (built with the defaults) |
 | 2 | Accomplishments and rituals | Built (0.2.0); waiting on the user's checks on Windows (the 15:30 shutdown reminder, sounds, the morning briefing on a real morning). The Phase 2 question in §15 (shutdown time) is still open; built with the 15:30 weekday default |
-| 3 | Atlas (text) | Not started |
+| 3 | Atlas (text) | Built (0.3.0); waiting on the user's checks with a real API key (a chat, Sort, Plan and Brain dump, then `npm run test:live`). Prices in `atlas/pricing.ts` were checked 2026-10-14; the live test is the first check against the real API |
 | 4 | Atlas (voice) | Not started |
 | 5 | Google Calendar and Gmail | Not started |
 | 6 | Obsidian second brain | Not started |
