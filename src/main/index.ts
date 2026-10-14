@@ -14,6 +14,7 @@ import { makeTrustCheck } from './ipc/trust';
 import { createLogger } from './log';
 import { createElectronUpdaterBackend } from './updater';
 import { createFakeUpdaterBackend } from './updater-fake';
+import { testHooksEnabled, updaterMode } from './test-hooks';
 
 const APP_ID = 'org.shull.cortex';
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'];
@@ -21,8 +22,11 @@ const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER
 // Where everything lives (PLAN §12): %APPDATA%\Cortex. Development uses its own folder so a
 // half-built version never touches the real data; tests point CORTEX_DATA_DIR at a temp folder.
 app.setName('Cortex');
+// The test hooks below (CORTEX_DATA_DIR, CORTEX_TEST, CORTEX_TEST_UPDATER) are read only in an
+// unpackaged build, so an environment variable can never redirect or alter the installed app.
+const testHooks = testHooksEnabled(app.isPackaged);
 const dataDir =
-  process.env['CORTEX_DATA_DIR'] ??
+  (testHooks ? process.env['CORTEX_DATA_DIR'] : undefined) ??
   (app.isPackaged ? app.getPath('userData') : `${app.getPath('userData')}-dev`);
 app.setPath('userData', dataDir);
 app.setAppUserModelId(APP_ID);
@@ -121,7 +125,7 @@ if (!app.requestSingleInstanceLock()) {
       const message = error instanceof Error ? error.message : String(error);
       log.error(`Database could not be opened: ${message}`);
       // Tests set CORTEX_TEST so a headless run can read the reason from stderr.
-      if (process.env['CORTEX_TEST']) console.error(`Cortex cannot start: ${message}`);
+      if (testHooks && process.env['CORTEX_TEST']) console.error(`Cortex cannot start: ${message}`);
       else dialog.showErrorBox('Cortex cannot start', message);
       app.exit(1);
       return;
@@ -129,12 +133,13 @@ if (!app.requestSingleInstanceLock()) {
 
     const database = db;
     const settings = new SettingsStore(database);
-    const useFakeFeed = !app.isPackaged && process.env['CORTEX_TEST_UPDATER'] === 'fake';
-    const backend = app.isPackaged
-      ? createElectronUpdaterBackend(log)
-      : useFakeFeed
-        ? createFakeUpdaterBackend(dataDir, () => app.quit())
-        : null;
+    const mode = updaterMode(app.isPackaged, process.env);
+    const backend =
+      mode === 'real'
+        ? createElectronUpdaterBackend(log)
+        : mode === 'fake'
+          ? createFakeUpdaterBackend(dataDir, () => app.quit())
+          : null;
     updater = new UpdaterController({
       backend,
       disabledReason: 'Updates are checked only in the installed app.',

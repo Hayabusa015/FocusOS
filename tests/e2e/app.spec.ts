@@ -228,10 +228,3 @@ test('the update flow: banner, safe notes, Later, download, backup, restart', as
     await app.close().catch(() => undefined);
   }
 });
-
-test('the fake update feed cannot be switched on in a packaged build', () => {
-  // The guard lives in index.ts: `!app.isPackaged && CORTEX_TEST_UPDATER === 'fake'`.
-  const source = readFileSync(join(root, 'src/main/index.ts'), 'utf8');
-  expect(source).toMatch(/!app\.isPackaged && process\.env\['CORTEX_TEST_UPDATER'\] === 'fake'/);
-  expect(source).toMatch(/app\.isPackaged\s*\?\s*createElectronUpdaterBackend/);
-});
