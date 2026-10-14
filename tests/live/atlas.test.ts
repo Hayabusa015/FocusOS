@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/shared/core';
 import { createChat } from '../../src/main/atlas/chat';
 import { createMemorySecretStore } from '../../src/main/atlas/secrets';
-import { getSpend } from '../../src/main/atlas/usage';
+import { brainDump } from '../../src/main/atlas/modes/scribe';
+import { getSpend, recentUsage } from '../../src/main/atlas/usage';
 import { openDatabase } from '../../src/main/db/connection';
 import { runMigrations } from '../../src/main/db/migrate';
 import { createStore } from '../../src/main/db/store';
@@ -40,6 +41,28 @@ describe.skipIf(!key)('Atlas against the real API', () => {
     // A second turn must still be accepted: history is replayed exactly as stored.
     const second = await chat.send('Thanks. What did you just add?');
     expect(second.reply.length).toBeGreaterThan(0);
+    db.close();
+  });
+
+  it('the default (Opus) route accepts fallbacks, caching and structured output', async () => {
+    const db = openDatabase(':memory:');
+    runMigrations(db);
+    const store = createStore(db);
+    store.seedAreas();
+    const deps = {
+      store,
+      secrets: createMemorySecretStore(key!),
+      settings: () => ({ ...DEFAULT_SETTINGS }),
+    };
+    const dump = await brainDump(
+      deps,
+      'grade the lab reports for chemistry, call the plumber, maybe rethink seating?',
+    );
+    expect(dump.tasks.length).toBeGreaterThanOrEqual(2);
+    const chat = createChat(deps);
+    await chat.send('What areas do I have?');
+    await chat.send('And which one is first?');
+    expect(recentUsage(store.ctx, 1)).toHaveLength(1);
     db.close();
   });
 });

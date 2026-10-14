@@ -295,3 +295,34 @@ describe('tools', () => {
     expect(store.getTask(t.id)).toMatchObject({ dueDate: '2026-10-17', deferCount: 1 });
   });
 });
+
+describe('audit fixes', () => {
+  it('start_focus_session is logged as Atlas and Undo ends it', async () => {
+    const t = store.createTask({ title: 'Write the test' }).result;
+    fake.push(call('start_focus_session', { taskId: t.id, minutes: 25 }), say('Started.'));
+    const out = await createChat(deps).send('focus on the test');
+    expect(store.activeFocus()?.taskId).toBe(t.id);
+    expect(store.listAtlasChanges().map((e) => e.action)).toEqual(['focus.start']);
+    store.undo(out.changes[0]!.logId);
+    expect(store.activeFocus()).toBeNull();
+  });
+
+  it('a turn that fails after a change leaves a note, so the next turn does not repeat it', async () => {
+    fake.push(call('create_task', { title: 'Order beakers' }), {
+      error: { status: 429, type: 'rate_limit_error', message: 'slow' },
+    });
+    const chat = createChat(deps);
+    await expect(chat.send('order beakers')).rejects.toMatchObject({ kind: 'unavailable' });
+    expect(chat.history().map((l) => l.role)).toEqual(['user', 'assistant']);
+    expect(chat.history()[1]!.text).toContain('Already done: Added "Order beakers"');
+    fake.push(say('Noted.'));
+    await chat.send('thanks');
+    expect(JSON.stringify(fake.requests.at(-1)!.body.messages)).toContain('Already done');
+    expect(fake.requests.at(-1)!.body.messages.map((m) => m.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'system',
+    ]);
+  });
+});

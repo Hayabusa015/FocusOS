@@ -543,6 +543,23 @@ export function activeFocus(ctx: Ctx): FocusSession | null {
   return toFocus(ctx, r);
 }
 
+/** Atlas starting a session: logged, so it shows in "changed today" and Undo ends it. */
+export function startFocusAsAtlas(
+  ctx: Ctx,
+  input: { taskId?: string | null; plannedMinutes: number },
+): Mutation<FocusSession> {
+  return mutate(ctx, 'atlas', 'focus.start', (tx) => {
+    const session = startFocus(ctx, input);
+    tx.created('focus_sessions', session.id);
+    return {
+      result: session,
+      summary: session.taskTitle
+        ? `Started a ${input.plannedMinutes} minute focus session on "${session.taskTitle}"`
+        : `Started a ${input.plannedMinutes} minute focus session`,
+    };
+  });
+}
+
 export function startFocus(
   ctx: Ctx,
   input: { taskId?: string | null; plannedMinutes: number },

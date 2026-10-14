@@ -439,3 +439,22 @@ describe('Plan the rest of today', () => {
     expect(store.getTask(t.id)?.scheduledStart).toBeNull();
   });
 });
+
+describe('applyPlan re-checks the rules', () => {
+  it('refuses blocks that break the day window or the 20% rule, even if the screen sent them', () => {
+    now = new Date(2026, 9, 14, 20, 0, 0); // two hours left
+    const mk = (title: string) => store.createTask({ title, dueDate: '2026-10-14' }).result;
+    const [a, b, c, d] = [mk('A'), mk('B'), mk('C'), mk('D')];
+    const done = applyPlan(deps, {
+      blocks: [
+        { taskId: a!.id, time: '20:00', minutes: 30 },
+        { taskId: b!.id, time: '20:30', minutes: 30 },
+        { taskId: c!.id, time: '21:00', minutes: 30 },
+        { taskId: d!.id, time: '21:45', minutes: 60 }, // runs past 22:00
+      ],
+    });
+    expect(done.logIds).toHaveLength(3);
+    expect(done.failed).toHaveLength(1);
+    expect(store.getTask(d!.id)?.scheduledStart).toBeNull();
+  });
+});

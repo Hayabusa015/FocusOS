@@ -128,10 +128,29 @@ export async function planRestOfToday(deps: AtlasDeps): Promise<PlanResult> {
 
 /** The user accepted (some of) the plan: now the tasks get their time blocks. */
 export function applyPlan(deps: AtlasDeps, apply: PlanApply): ApplyOutcome {
-  const today = deps.store.ctx.today();
+  const ctx = deps.store.ctx;
+  const today = ctx.today();
+  const window = dayWindowOf(deps.settings());
+  // The rules are checked again here, not only when the plan was proposed: time may have passed,
+  // other blocks may have been added, and the payload comes from the screen.
+  const replanning = new Set(apply.blocks.map((b) => b.taskId));
+  const busy: Span[] = deps.store
+    .getToday(window)
+    .blocks.filter((b) => b.status !== 'done' && !replanning.has(b.taskId))
+    .map((b) => ({
+      start: minutesOfDay(isoToLocalTime(b.start)),
+      end: minutesOfDay(isoToLocalTime(b.end)),
+    }));
+  const checked = enforcePlan({
+    nowMinute: minutesOfDay(toLocalTime(ctx.now())),
+    dayStart: window.dayStart,
+    dayEnd: window.dayEnd,
+    busy,
+    proposed: apply.blocks,
+  });
   const logIds: string[] = [];
-  const failed: string[] = [];
-  for (const b of apply.blocks) {
+  const failed: string[] = checked.dropped.map((d) => d.reason);
+  for (const b of checked.accepted) {
     try {
       logIds.push(
         deps.store.atlas.updateTask({

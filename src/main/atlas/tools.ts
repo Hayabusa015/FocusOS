@@ -344,10 +344,16 @@ export const TOOL_SPECS = [
       minutes: z.number().int().min(5).max(180).default(25),
     }),
     mutates: true,
-    run: ({ store }, { taskId, minutes }) =>
+    run: (ctx, { taskId, minutes }) =>
       safely(() => {
-        const s = store.startFocus({ taskId: taskId ?? null, plannedMinutes: minutes });
-        return json({ started: { task: s.taskTitle, minutes: s.plannedMinutes } });
+        const done = ctx.store.atlas.startFocus({
+          taskId: taskId ?? null,
+          plannedMinutes: minutes,
+        });
+        ctx.record(done);
+        return json({
+          started: { task: done.result.taskTitle, minutes: done.result.plannedMinutes },
+        });
       }),
   }),
 

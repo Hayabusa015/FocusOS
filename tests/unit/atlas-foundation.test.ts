@@ -96,8 +96,10 @@ describe('pricing', () => {
     expect(estimateCost('claude-haiku-5-5', usage({ inputTokens: 200_000 }))).toBe(0.1);
   });
 
-  it('prices an unknown model at nothing instead of failing the call', () => {
-    expect(estimateCost('claude-future-9', usage({ inputTokens: 5000 }))).toBe(0);
+  it('prices an unknown model like the dearest known one, so a cap never under-counts', () => {
+    expect(estimateCost('claude-future-9', usage({ inputTokens: 1_000_000 }))).toBe(
+      estimateCost('claude-opus-5-5', usage({ inputTokens: 1_000_000 })),
+    );
   });
 });
 
@@ -145,10 +147,10 @@ describe('usage ledger and the monthly cap', () => {
     expect(() => assertUnderCap(ctx(), 4)).toThrow(/spending cap/);
   });
 
-  it('has no cap unless one is set', () => {
+  it('has no cap unless one is set, and a cap of 0 blocks everything', () => {
+    expect(() => assertUnderCap(ctx(), 0)).toThrowError(AtlasError);
     recordUsage(ctx(), 'chat', 'claude-opus-5-5', usage({ inputTokens: 100_000_000 }));
     expect(() => assertUnderCap(ctx(), null)).not.toThrow();
-    expect(() => assertUnderCap(ctx(), 0)).not.toThrow();
   });
 });
 

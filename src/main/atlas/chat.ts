@@ -180,6 +180,23 @@ export function createChat(deps: AtlasDeps) {
         save(day, runner.params.messages.slice(history.length) as BetaMessageParam[]);
         return { reply: textOf(last), changes };
       } catch (error) {
+        // A turn that failed after Atlas had already changed things: keep the transcript honest,
+        // so the next turn knows what was done and does not repeat it. (History stays valid: a
+        // user turn followed by an assistant turn.)
+        if (changes.length > 0) {
+          save(ctx.today(), [
+            { role: 'user', content: said },
+            {
+              role: 'assistant',
+              content: [
+                {
+                  type: 'text',
+                  text: `I was interrupted before finishing. Already done: ${changes.map((c) => c.summary).join('; ')}.`,
+                },
+              ],
+            },
+          ]);
+        }
         throw describeError(error);
       } finally {
         busy = false;

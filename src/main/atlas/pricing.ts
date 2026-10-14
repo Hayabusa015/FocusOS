@@ -40,8 +40,11 @@ const PER_MILLION = 1_000_000;
 
 /** Estimated dollars for one call. Unknown models cost 0 here, so a new model never breaks a call. */
 export function estimateCost(model: string, usage: TokenUsage): number {
-  const price = PRICES[model as AtlasModel];
-  if (!price) return 0;
+  // A model not in the table (a fallback model the server chose) is priced like the dearest one we
+  // know, so a spending cap can only over-count, never under-count.
+  const price =
+    PRICES[model as AtlasModel] ??
+    Object.values(PRICES).reduce((a, b) => (b.output > a.output ? b : a));
   const promptTokens = usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
   const tier = price.longPrompt && promptTokens > price.longPrompt.over ? price.longPrompt : price;
   const cost =

@@ -58,7 +58,7 @@ export function getSpend(ctx: Ctx): Spend {
 
 /** Refuses an Atlas call once this month's spend has reached the cap. A missing cap means none. */
 export function assertUnderCap(ctx: Ctx, capUsd: number | null): void {
-  if (capUsd === null || capUsd <= 0) return;
+  if (capUsd === null) return;
   const spent = getSpend(ctx).month;
   if (spent >= capUsd) throw capReached(spent, capUsd);
 }

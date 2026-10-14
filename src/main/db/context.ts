@@ -21,6 +21,7 @@ export const UNDOABLE_TABLES = [
   'maintenance_items',
   'maintenance_log',
   'wins',
+  'focus_sessions',
 ] as const;
 export type UndoableTable = (typeof UNDOABLE_TABLES)[number];
 

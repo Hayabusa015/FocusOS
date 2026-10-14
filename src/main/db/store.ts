@@ -21,6 +21,7 @@ import {
   logWin,
   settle,
   startFocus,
+  startFocusAsAtlas,
   takeAward,
 } from './ledger';
 import {
@@ -166,6 +167,8 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
       rescheduleTask: (id: string, dueDate: LocalDate) => rescheduleTask(ctx, id, dueDate, 'atlas'),
       markMaintenanceDone: (id: string, date?: LocalDate, note?: string) =>
         markMaintenanceDone(ctx, id, date, note, 'atlas'),
+      startFocus: (input: { taskId?: string | null; plannedMinutes: number }) =>
+        startFocusAsAtlas(ctx, input),
     },
     queryTasks: (q: TaskQuery) => queryTasks(ctx, q),
     listAtlasChanges: (day?: LocalDate) => listAtlasChanges(ctx, day ?? ctx.today()),
