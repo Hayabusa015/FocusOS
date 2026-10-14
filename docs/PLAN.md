@@ -12,14 +12,15 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 
 | Phase | Name | Status |
 |---|---|---|
-| 0 | Scaffold | Not started |
+| 0 | Scaffold, release pipeline and updater | Not started |
 | 1 | Core tasks | Not started |
 | 2 | Accomplishments and rituals | Not started |
 | 3 | Atlas (text) | Not started |
 | 4 | Atlas (voice) | Not started |
 | 5 | Google Calendar and Gmail | Not started |
-| 6 | WorkWork bridge | Not started |
-| 7 | Polish and install | Not started |
+| 6 | Obsidian second brain | Not started |
+| 7 | WorkWork bridge | Not started |
+| 8 | Polish and install | Not started |
 
 The builder updates this table and nothing else in this file without asking (see `CLAUDE.md`).
 
@@ -69,8 +70,10 @@ Every feature is judged against three questions:
 - Atlas voice: a designed voice through VoiceStudio and push-to-talk input
 - Google Calendar (personal account): read events and write time blocks
 - Gmail (personal account): email triage into suggested tasks, user-approved
+- Obsidian second brain: notes, daily notes and searchable knowledge stored in the user's vault (§11A)
 - WorkWork bridge: read-only class units for Chemistry, Physics and Geology
 - Windows installer, tray icon, start at login, local backups
+- **Self-update:** Cortex finds new releases on GitHub and offers to install them (§11B)
 
 ### Not in v1
 
@@ -78,6 +81,8 @@ Every feature is judged against three questions:
 - The school Google account
 - Habits tracking (the Dayglide sample has it, but it wasn't asked for; candidate for v2)
 - Writing anything into WorkWork
+- Editing the user's existing Obsidian notes (Cortex writes only inside its own vault folder), an
+  Obsidian plugin, and semantic or embedding search over the vault
 - Multi-user anything, and cloud sync of any kind
 - An always-listening wake word (push-to-talk only)
 
@@ -128,6 +133,8 @@ Every feature is judged against three questions:
 | Validation | Zod | IPC payloads, tool inputs, settings |
 | Claude | `@anthropic-ai/sdk` (official TypeScript SDK) | §7 |
 | Google | `googleapis` | §9 |
+| Updates | `electron-updater`, with GitHub Releases as the feed | §11B |
+| Vault files | `gray-matter` for frontmatter and `chokidar` for watching the vault folder | §11A |
 | Unit tests | Vitest | |
 | End-to-end tests | Playwright, Electron mode | |
 | Lint and format | ESLint and Prettier | |
@@ -156,6 +163,8 @@ cortex/
 ├── CLAUDE.md                  rules for whoever builds this
 ├── docs/PLAN.md               this file
 ├── docs/VOICESTUDIO.md        written in Phase 4: the verified API, not guesses
+├── CHANGELOG.md               one section per released version; becomes the release notes
+├── .github/workflows/release.yml   builds and publishes a release when the version is bumped
 ├── src/
 │   ├── main/
 │   │   ├── index.ts           app lifecycle, windows, tray, global shortcuts
@@ -166,6 +175,8 @@ cortex/
 │   │   ├── atlas/             Claude client, tools, prompts, cost ledger
 │   │   ├── voice/             VoiceStudio client, audio cache, fallback
 │   │   ├── google/            oauth, calendar, gmail, triage
+│   │   ├── obsidian/          vault reader/writer, daily note, search index
+│   │   ├── updater.ts         update check, prompt, download, install
 │   │   ├── workwork/          read-only DECISIONS.md reader
 │   │   └── secrets.ts         safeStorage wrapper
 │   ├── preload/index.ts       exposes the typed API only
@@ -222,6 +233,7 @@ Personal. The user can rename, add and archive areas.
 | `scheduled_start`, `scheduled_minutes` | A time block on the Today timeline |
 | `size` | `s`, `m` or `l`. Defaults to `s`. Drives XP |
 | `unit_code` | Nullable, for example `U4` or `U4/S4.2`. From the bridge only (§11) |
+| `note_path` | Nullable. Vault-relative path of the linked Obsidian note (§11A) |
 | `recurrence` | Nullable JSON (below) |
 | `defer_count` | Incremented each time the task is pushed to a later day |
 | `source` | `manual`, `voice`, `atlas`, `email` or `calendar` |
@@ -292,6 +304,10 @@ transcript, with one conversation per day.
 **`api_usage`**: `id`, `route`, `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`,
 `cache_write_tokens`, `est_cost_usd`, `created_at`.
 
+**`vault_index`**: an SQLite FTS5 table (`path`, `title`, `body`, `mtime`) that makes the vault
+searchable. It is a **derived cache**, rebuilt from the vault files at any time, and is never the
+source of any note's content (§11A).
+
 **`settings`**: key and value JSON. Secrets are never stored here (see §12).
 
 ---
@@ -359,6 +375,10 @@ are fixed:
 | `start_focus_session` | |
 | `log_maintenance_done` | |
 | `get_progress` | XP, level, streak, per-area progress |
+| `search_notes` | Searches the Obsidian vault (§11A). Only present when a vault is connected |
+| `read_note` | Reads one note, truncated. Respects the excluded folders |
+| `create_note` | Creates a note inside the vault's `Cortex/` folder only |
+| `append_to_note` | Appends to a note inside the vault's `Cortex/` folder only |
 | `list_areas` | |
 
 Tools that are **not** given to Atlas:
@@ -387,6 +407,8 @@ Tools that are **not** given to Atlas:
 
 - **Input:** free text or a transcript.
 - **Output schema:** `{tasks: [{title, area_guess, due_date?, due_time?, size_guess, notes?}], unparsed: string[]}`.
+  When a vault is connected, `unparsed` text (ideas, worries, things that are not tasks) is offered
+  as a note in `Cortex/Inbox/` so it is kept somewhere (§11A).
 - The result shows as an editable checklist, **pre-checked**. The user unticks what's wrong and
   presses **Add**. Nothing is saved before that press.
 - `area_guess` must be one of the user's area names, or null.
@@ -647,7 +669,7 @@ Quiet hours are respected.
   - Port the logic from WorkWork `app/curriculum.mjs`. It handles the three heading formats the
     files actually use.
   - Tests run against fixture copies of the three real files, taken from the WorkWork commit
-    current when Phase 6 starts.
+    current when Phase 7 starts.
 - **What it provides:** a unit/section picker on class-area tasks. Tasks store only the code
   string, for example `U4/S4.2`.
 - **Guardrails:**
@@ -656,6 +678,178 @@ Quiet hours are respected.
   - Cortex never writes to the WorkWork folder.
   - If parsing fails, the picker hides itself and Settings shows the error. Nothing crashes.
   - Cortex never invents a unit code.
+
+---
+
+## 11A. Obsidian second brain
+
+*(Numbered 11A so the other section numbers stay stable.)*
+
+### The split
+
+| Lives in | What | Why |
+|---|---|---|
+| **Cortex's database** | Tasks, areas, XP, wins, maintenance, calendar cache | They have state and relationships that markdown can't hold safely |
+| **Obsidian vault (markdown)** | Notes, ideas, daily notes, reviews, anything you'd want to read, link and search later | Plain files you own, readable without Cortex |
+
+A fact lives in one place. A task's status is never stored in a note as the authority. A daily note
+gets a **generated summary** of what was done, which is a record and not a second copy to keep in
+sync.
+
+### Connection
+
+- **No plugin and no Obsidian process needed.** A vault is a folder of `.md` files, so Cortex reads
+  and writes the folder directly. Obsidian doesn't have to be running.
+- **Setting:** the vault folder, chosen with a folder picker. Cortex checks that it contains a
+  `.obsidian/` folder and refuses anything else.
+- **Opening notes:** "Open in Obsidian" uses `obsidian://open?vault=<name>&file=<path>`.
+- With no vault set, the notes features are hidden and everything else works.
+
+### Folder boundary
+
+- **Cortex writes only inside `<vault>/Cortex/`.** It never creates, edits, renames or deletes
+  anything outside that folder. A test asserts this by diffing the vault tree.
+- Inside `Cortex/`:
+  - `Inbox/` holds raw brain dumps and quick captured notes
+  - `Daily/` holds `YYYY-MM-DD.md`
+  - `Notes/` holds notes Atlas creates or a task's linked note
+  - `Reviews/` holds weekly review summaries
+- **Reading** is allowed anywhere in the vault except excluded folders. The setting has two parts:
+  - **Atlas may read `Cortex/`:** on by default.
+  - **Atlas may read the rest of the vault:** off by default. The user turns it on.
+  - **Excluded folders:** a list, always honoured. `.obsidian` and `.trash` are excluded by default.
+
+### Note format
+
+- Frontmatter, readable by Obsidian and Dataview:
+  ```yaml
+  ---
+  cortex_id: 01J...      # ULID
+  type: note | daily | inbox | review
+  area: chemistry        # optional, an area name
+  created: 2026-10-14
+  tags: [cortex]
+  ---
+  ```
+- **File names:** `YYYY-MM-DD Title.md`. Characters Windows forbids are removed, the name is capped
+  at 120 characters, and a name collision gets ` (2)`, ` (3)`.
+- **Writes are atomic:** write a temporary file in the same folder, then rename it. If a file has
+  changed since Cortex last read it, Cortex re-reads before appending.
+- **Existing files are never overwritten**, with one exception: a block Cortex manages, below.
+
+### Daily note
+
+- `Cortex/Daily/2026-10-14.md` holds a block between `<!-- cortex:begin -->` and
+  `<!-- cortex:end -->` with: wins, completed tasks by area, focus minutes, maintenance done and
+  XP.
+- Cortex rewrites **only the text between the markers**. Everything the user types outside them is
+  preserved byte for byte. A test covers this across repeated regenerations.
+- It is written when the shutdown ritual finishes, and on demand from the Wins page.
+
+### What Atlas can do with the vault
+
+- **Capture:** "Note that the Plate Tectonics demo idea is to use a tray of syrup" creates a note
+  in `Cortex/Notes/`.
+- **Recall:** "What did I write about the lab safety rules?" runs `search_notes`, then `read_note`
+  on the best match.
+- **Task notes:** "Make a note for this task" creates a note from a template, with
+  `cortex_id` and the task title, and stores its path in the task's `note_path`.
+- **Brain dumps:** the text that isn't a task is offered as a note in `Cortex/Inbox/`. This can be
+  turned off in Settings (§7.6).
+- **Atlas reads notes only when the user's request calls for it,** and each read appears in the
+  Atlas action log ("Atlas read: Lab safety rules"). A note's text sent to Claude is truncated to
+  8,000 characters.
+
+### Search
+
+- A background scan fills the `vault_index` FTS5 table, and `chokidar` keeps it current.
+- Settings has **Rebuild index**, which drops and refills it. The index holds no information that
+  isn't in the files.
+- Search results show the title, a snippet and the path. Clicking opens the note in Obsidian.
+- **Verify in the Phase 0 spike** that FTS5 is available in the chosen SQLite option.
+
+### Privacy
+
+- Notes can contain student information. Settings says so beside the "Atlas may read the rest of the
+  vault" switch, and the user should keep that switch off or exclude those folders.
+- Nothing from the vault leaves the PC except note text Atlas reads for a request, under the rules
+  above.
+
+### Out of scope for v1
+
+Editing the user's own notes, an Obsidian plugin, semantic search, canvases, graph views and Obsidian
+Sync conflict handling.
+
+---
+
+## 11B. Updates and releases
+
+### What counts as an update
+
+A push to the repository does **not** change the app installed on the PC. A **release** does. The
+pipeline below turns "I merged a new version" into a release, and the installed app finds it.
+
+### Release pipeline (`.github/workflows/release.yml`)
+
+1. **Trigger:** every push to `main`.
+2. **Decision:** the workflow compares `package.json`'s `version` with the latest GitHub release.
+   If the version is not newer, it stops and does nothing.
+3. **Build:** if it is newer, the workflow builds on a Windows runner with
+   `electron-builder --win nsis --publish never`, then publishes a GitHub release `vX.Y.Z` with:
+   - `Cortex-Setup-X.Y.Z.exe`
+   - `latest.yml` (the update manifest, with the file's SHA-512 hash)
+   - the `.blockmap` file
+4. **Release notes:** taken from the matching section of `CHANGELOG.md`. If no section exists the
+   workflow fails and no release is published.
+5. **The builder's part:** each phase bumps the version and adds its `CHANGELOG.md` section on the
+   working branch. **The user merges to `main`,** which is what publishes the release. The builder
+   never pushes to `main`.
+
+**Versioning:** semantic versions. `0.<phase>.<patch>` until v1, so Phase 3 is `0.3.0`.
+
+### In the app (`src/main/updater.ts`, using `electron-updater`)
+
+- **Never runs in development** (`app.isPackaged` only).
+- **When it checks:** 30 seconds after launch, every 4 hours while open, and from
+  Settings → **Check for updates**.
+- **When one is found,** a banner appears: *"Cortex 0.4.0 is available. What's new · Update now ·
+  Later."*
+  - What's new shows the release notes, rendered as sanitised markdown.
+  - **Later** hides the banner for 24 hours for that version. Settings still shows it as available.
+- **Update now** downloads with a progress bar, then offers **Restart to install**. If the user
+  ignores it, the update installs at the next quit (`autoInstallOnAppQuit`).
+- **It never interrupts:** it won't restart during a focus session, the shutdown ritual, a
+  push-to-talk recording or Atlas mid-reply. The prompt waits until the user is idle.
+- **After updating,** a one-time card says "Updated to 0.4.0" with the notes.
+- **Settings shows** the installed version, the last check time, and the latest version found.
+
+### Data safety across updates
+
+- **Before installing,** Cortex copies the database to `backups/pre-update-<from>-to-<to>.db`.
+- Migrations run at startup, forward-only.
+- **Downgrade protection:** if the database's schema is newer than the app knows, the app refuses
+  to open it and says why. It never rewrites it.
+- **A failed migration** stops the app with a message naming the backup file. Nothing is half-applied
+  (each migration is one transaction).
+
+### Repository visibility (a decision for the user, see §15)
+
+`electron-updater` reads GitHub releases anonymously only if the repository is **public**.
+
+- **Option A (recommended):** make FocusOS public. No secret lives in the repository: the API key,
+  Google tokens and all data stay on the PC.
+- **Option B:** keep it private and give the app a read-only fine-grained GitHub token, pasted into
+  Settings and stored with `safeStorage`. The token is never part of the installer.
+
+### Unsigned builds
+
+The installer isn't code-signed. Windows SmartScreen warns on the first install ("More info → Run
+anyway"). Updates integrity-check against the SHA-512 hash in `latest.yml`. **Verify in Phase 0**
+that an update from an unsigned build to the next one installs correctly.
+
+### Out of scope
+
+VoiceStudio updates itself separately, and Cortex neither checks for nor installs its updates.
 
 ---
 
@@ -670,6 +864,10 @@ Quiet hours are respected.
     `safeStorage` and stored in a separate file.
   - They never go in the database, logs, or anything sent to the renderer.
 - **Data location:** `%APPDATA%/Cortex/` holds the database, audio cache, backups and logs.
+- **Vault boundary:** Cortex writes only inside `<vault>/Cortex/` (§11A) and reads only the folders
+  the user's settings allow.
+- **Updates:** the app contacts GitHub only to read release information and download the installer
+  (§11B). If the repository is private (Option B), the read-only token is stored with `safeStorage`.
 - **Backups:**
   - A daily copy of the database is taken on first open each day.
   - The last 14 are kept.
@@ -694,12 +892,24 @@ not start the next phase until the current one is accepted by the user.
 - A tray icon.
 - An empty Today page.
 - An electron-builder NSIS config.
+- `CHANGELOG.md` and the release workflow (§11B).
+- The updater: the check, the banner, the download and the restart prompt, and the pre-update
+  backup.
+- A Settings page showing the installed version and a Check for updates button.
 
 **Acceptance:**
 - `npm run dev` opens the window.
 - `npm test` passes, including a migration test.
 - `npm run dist` produces a Windows installer that installs and launches.
-- The SQLite choice is recorded in §0.
+- The SQLite choice is recorded in §0, with FTS5 confirmed available (§11A).
+- **The update loop works end to end on the user's PC:**
+  1. Release `0.0.1` is published by the workflow and installed.
+  2. A harmless change is merged as `0.0.2`, and the workflow publishes the release.
+  3. The installed app shows the update banner, with the release notes.
+  4. After **Update now** and **Restart to install**, the app reports `0.0.2` and its data is intact.
+  5. The pre-update backup file exists.
+- A push to `main` without a version bump publishes no release.
+- The result for an unsigned-build update (§11B) is recorded here.
 
 ### Phase 1: Core tasks
 
@@ -793,7 +1003,32 @@ runs only when a key is present.
 - The app still works fully after the user disconnects Google.
 - The `gmail.readonly` question from §9.1 is answered and recorded here.
 
-### Phase 6: WorkWork bridge
+### Phase 6: Obsidian second brain
+
+**Build:**
+- The vault setting and its validation, the excluded-folder list, and the "Atlas may read the rest
+  of the vault" switch.
+- The vault writer: atomic writes, safe file names, frontmatter, and the `Cortex/` boundary.
+- The daily note with its managed block, written at the end of the shutdown ritual and on demand.
+- The `vault_index` scan and watcher, with Rebuild index.
+- Search in the UI and the Atlas tools `search_notes`, `read_note`, `create_note` and
+  `append_to_note`.
+- A task's linked note: Create note, Open in Obsidian, and the `note_path` column.
+- Saving the `unparsed` text of a brain dump as an inbox note.
+
+**Acceptance:**
+- Choosing a folder without `.obsidian/` is refused.
+- Regenerating the daily note ten times leaves everything outside the markers byte for byte
+  unchanged.
+- "Note that the syrup tray would make a good tectonics demo" creates a note in `Cortex/Notes/`,
+  and "what did I write about the syrup tray?" finds and reads it.
+- With the rest-of-vault switch off, Atlas cannot read a note outside `Cortex/`. An excluded folder
+  stays unreadable with the switch on.
+- A test diffs the whole vault tree before and after a full session and finds changes only under
+  `Cortex/`.
+- Disconnecting the vault leaves every other feature working.
+
+### Phase 7: WorkWork bridge
 
 **Build:**
 - The path setting.
@@ -807,7 +1042,7 @@ runs only when a key is present.
 - Removing a unit from a fixture flags the tasks that used it.
 - Nothing is ever written to the WorkWork folder (a test asserts this).
 
-### Phase 7: Polish and install
+### Phase 8: Polish and install
 
 **Build:**
 - Start at login (optional).
@@ -840,8 +1075,10 @@ runs only when a key is present.
 
 ## 15. Open questions for the user
 
-These do not block Phases 0 to 2. Ask them when the phase that needs them starts.
+Ask each one when the phase that needs it starts. **Question 0 blocks Phase 0.**
 
+0. **(Phase 0)** Is the FocusOS repository **public** (Option A) or private with a token (Option B)?
+   See §11B. The update feed depends on this.
 1. **(Phase 1)** Do you want your school **bell schedule** (class periods by weekday) as fixed
    blocks on the Today timeline?
 2. **(Phase 1)** Which **sport or role** is Coaching? Are there recurring coaching tasks to seed?
@@ -853,6 +1090,11 @@ These do not block Phases 0 to 2. Ask them when the phase that needs them starts
    Settings.
 6. **(Phase 3)** Do you want a **monthly spending cap**, and at what amount?
 7. **(Phase 4)** After you hear the candidates, which **voice** is Atlas?
+8. **(Phase 6)** Do you already have an **Obsidian vault**? Where is it? Should Cortex use a new
+   `Cortex/` folder inside it, or a vault of its own?
+9. **(Phase 6)** Do you already use Obsidian's **Daily Notes** plugin? If so, do you want Cortex's
+   daily summary in your existing daily notes instead of `Cortex/Daily/`? (The default keeps them
+   separate, since Cortex writes only inside `Cortex/`.)
 
 ---
 

@@ -24,6 +24,8 @@ covers only how to work in this repository.
    - the VoiceStudio request schemas (write `docs/VOICESTUDIO.md` first)
    - whether `node:sqlite` works in Electron
    - whether the Gmail restricted scope works
+   - whether FTS5 is available in the chosen SQLite option
+   - whether an update from one unsigned build to the next installs
 5. **Claude API code:** load the `claude-api` skill and read its TypeScript docs before writing any
    code in `src/main/atlas/`.
    - Use only the model IDs listed in PLAN §7.1.
@@ -36,9 +38,15 @@ covers only how to work in this repository.
    - Nothing writes to the WorkWork folder.
    - Nothing writes to Google calendars other than the one named "Cortex".
    - Email is never sent.
+   - In the Obsidian vault, write only inside `<vault>/Cortex/`, and never touch text outside the
+     `cortex:begin` / `cortex:end` markers in a daily note.
 8. **Use the repository's checks.** Before every commit, run `npm run lint`, `npm run typecheck`
    and `npm test`, and fix any failures first.
-9. **Pin dependency versions exactly** (no `^` or `~`). Use releases that are at least two weeks
+9. **Every version needs a release.** When a phase is accepted, bump the version and add its
+   `CHANGELOG.md` section on your branch, then tell the user it is ready to merge. **The user's
+   merge to `main` is what publishes the release,** so never push to `main` yourself. The release
+   workflow refuses to publish without a changelog section. Never publish a release by hand.
+10. **Pin dependency versions exactly** (no `^` or `~`). Use releases that are at least two weeks
    old.
 
 ## Commands
