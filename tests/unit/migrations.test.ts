@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../src/main/db/connection';
+import type { Db } from '../../src/main/db/connection';
 import { backupDatabase } from '../../src/main/db/backup';
 import {
   bundledMigrations,
@@ -20,7 +21,27 @@ const tmp = () => {
   dirs.push(d);
   return d;
 };
-afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
+// Every database file a test opens is tracked and closed before its folder is deleted: Windows
+// refuses to delete a file that is still open (EPERM), which Linux allows. In-memory databases
+// need no tracking.
+const opened: Db[] = [];
+const openFile = (path: string): Db => {
+  const db = openDatabase(path);
+  opened.push(db);
+  return db;
+};
+afterEach(() => {
+  for (const db of opened.splice(0)) {
+    try {
+      db.close();
+    } catch {
+      // Already closed by the test itself.
+    }
+  }
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});
 
 const m = (version: number, name: string, sql: string) => ({ version, name, sql });
 
@@ -82,7 +103,7 @@ describe('safety', () => {
 
   it('rolls a failed migration back completely and names the backup', () => {
     const dir = tmp();
-    const db = openDatabase(join(dir, 'cortex.db'));
+    const db = openFile(join(dir, 'cortex.db'));
     runMigrations(db, [m(1, 'a', 'CREATE TABLE keep(x); INSERT INTO keep VALUES (42)')]);
 
     const bad = [
@@ -103,13 +124,13 @@ describe('safety', () => {
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='half'").all()).toHaveLength(0);
     expect(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()).toEqual({ v: 1 });
     // The backup holds the pre-migration data.
-    const backup = openDatabase(err.backupPath as string);
+    const backup = openFile(err.backupPath as string);
     expect(backup.prepare('SELECT x FROM keep').get()).toEqual({ x: 42 });
   });
 
   it('takes no backup for a brand-new database', () => {
     const dir = tmp();
-    const db = openDatabase(join(dir, 'cortex.db'));
+    const db = openFile(join(dir, 'cortex.db'));
     const result = runMigrations(db, [m(1, 'a', 'CREATE TABLE a(x)')], {
       backupDir: join(dir, 'b'),
     });
@@ -120,13 +141,13 @@ describe('safety', () => {
 describe('backupDatabase', () => {
   it('copies a WAL-mode database consistently and replaces an earlier backup', () => {
     const dir = tmp();
-    const db = openDatabase(join(dir, 'cortex.db'));
+    const db = openFile(join(dir, 'cortex.db'));
     db.exec('CREATE TABLE t(x); INSERT INTO t VALUES (1)');
     const dest = join(dir, 'backups', 'one.db');
     backupDatabase(db, dest);
     db.exec('INSERT INTO t VALUES (2)');
     backupDatabase(db, dest);
-    const copy = openDatabase(dest);
+    const copy = openFile(dest);
     expect(copy.prepare('SELECT COUNT(*) c FROM t').get()).toEqual({ c: 2 });
   });
 });
