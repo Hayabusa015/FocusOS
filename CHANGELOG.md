@@ -26,7 +26,7 @@ Cortex is now a working task app. Everything here runs on your PC with no accoun
 - **Notifications** for due times, time-block starts and maintenance coming due, with quiet hours.
 - A **daily backup** of your data (the last 14 are kept).
 - **New look:** the Cortex logo (brain with a pulse) is the app icon, tray icon and sidebar mark,
-  and the colours now follow the logo's deep indigo, violet and lavender.
+  and the colours now follow the logo: near-black, gold and violet.
 - Closing the window now keeps Cortex running in the tray, so the shortcut keeps working. Quit
   from the tray icon, or turn this off in Settings.
 

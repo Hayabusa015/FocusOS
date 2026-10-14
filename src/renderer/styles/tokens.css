@@ -10,26 +10,26 @@
   /* Drop Tailwind's default palette so only the tokens below exist. */
   --color-*: initial;
 
-  /* The logo palette (brand): deep indigo, violet, lavender, on paper white */
-  --color-brand-deep: #261c63;
-  --color-brand-violet: #6938f7;
-  --color-brand-lavender: #c7adfc;
-  --color-paper: #f9f7f8;
+  /* The logo palette (brand): near-black, charcoal, gold and violet */
+  --color-brand-black: #0f1112;
+  --color-brand-charcoal: #2e3137;
+  --color-brand-gold: #febb26;
+  --color-brand-violet: #7e47ff;
 
-  /* Ground and surfaces: the deep indigo, darkened */
-  --color-ground: #0c0a1d;
-  --color-surface: #131129;
-  --color-raised: #1c1941;
-  --color-line: #2b2757;
+  /* Ground and surfaces: the logo's near-black, stepped lighter */
+  --color-ground: #0f1112;
+  --color-surface: #16181c;
+  --color-raised: #20232a;
+  --color-line: #2e3137;
 
   /* Text */
-  --color-ink: #efedf8;
-  --color-ink-muted: #a29fc4;
+  --color-ink: #f1f1f4;
+  --color-ink-muted: #9b9fab;
 
-  /* Brand and states. Violet fills; lavender is the accent for text on the dark ground. */
-  --color-accent: #6938f7;
-  --color-accent-ink: #ffffff;
-  --color-accent-soft: #c7adfc;
+  /* Brand and states. Gold is the accent (dark text on it); violet is the second brand colour. */
+  --color-accent: #febb26;
+  --color-accent-ink: #0f1112;
+  --color-accent-soft: #febb26;
   --color-win: #4fd1a1;
   --color-caution: #f2b84b;
   --color-alert: #ff7a85;

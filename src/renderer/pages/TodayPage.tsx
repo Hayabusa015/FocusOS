@@ -79,7 +79,7 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
               className="h-2 overflow-hidden rounded-full bg-raised"
             >
               <div
-                className="h-full rounded-full bg-accent"
+                className="h-full rounded-full bg-brand-violet"
                 style={{ width: `${today.arc.fraction * 100}%` }}
               />
             </div>
