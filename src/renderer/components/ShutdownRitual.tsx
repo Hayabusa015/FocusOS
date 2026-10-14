@@ -95,7 +95,8 @@ export function ShutdownRitual({ onClose, onSortInbox }: { onClose(): void; onSo
     }
   }
 
-  const closed = finished !== null || view?.doneToday === true;
+  // Reopened after the day was closed: only say it is closed if nothing new is open.
+  const closed = finished !== null || (view?.doneToday === true && view.unfinished.length === 0);
   const open = view?.unfinished.length ?? 0;
 
   return (

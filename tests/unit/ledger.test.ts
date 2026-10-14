@@ -80,6 +80,19 @@ describe('task XP', () => {
     expect(total()).toBe(10);
   });
 
+  it('bringing a slipped task forward to today is not a deferral', () => {
+    const t = store.createTask({
+      title: 'Slipped',
+      dueDate: '2026-10-12',
+      areaId: area('Home').id,
+    }).result;
+    store.rescheduleTask(t.id, '2026-10-14');
+    expect(store.getTask(t.id)?.deferCount).toBe(0);
+    // Pushing it past today is.
+    store.rescheduleTask(t.id, '2026-10-15');
+    expect(store.getTask(t.id)?.deferCount).toBe(1);
+  });
+
   it('reopening a task takes its points back too', () => {
     const t = store.createTask({ title: 'T', size: 'm', areaId: area('Home').id }).result;
     store.completeTask(t.id);
@@ -96,42 +109,96 @@ describe('task XP', () => {
     expect(total()).toBe(10);
   });
 
-  it('the total always equals the sum of the event rows, after any sequence of complete and undo', () => {
+  it('the total always equals what the data says, after any mix of changes and undos', () => {
     // A small seeded generator, so a failure can be replayed.
     let seed = 20261014;
     const rand = (n: number) => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
       return seed % n;
     };
-    const ids = ['s', 'm', 'l', 's', 'm'].map(
-      (size, i) =>
-        store.createTask({ title: `T${i}`, size: size as 's' | 'm' | 'l', areaId: area('Home').id })
-          .result.id,
+    const home = area('Home').id;
+    const sizes = ['s', 'm', 'l', 's', 'm'] as const;
+    const ids = sizes.map(
+      (size, i) => store.createTask({ title: `T${i}`, size, areaId: home }).result.id,
     );
+    const parent = ids[0]!;
+    const item = store.createMaintenance({ name: 'Filter', intervalDays: 30 }).result.id;
     const logs: string[] = [];
-    for (let step = 0; step < 200; step++) {
+
+    const expectedFromData = () => {
+      const tasks = (
+        db
+          .prepare(
+            "SELECT size, defer_count FROM tasks WHERE status = 'done' AND deleted_at IS NULL AND parent_id IS NULL",
+          )
+          .all() as { size: 's' | 'm' | 'l'; defer_count: number }[]
+      ).reduce(
+        (sum, t) => sum + { s: 10, m: 20, l: 40 }[t.size] * (t.defer_count >= 2 ? 1.5 : 1),
+        0,
+      );
+      const maintenance =
+        15 *
+        Number((db.prepare('SELECT COUNT(*) AS n FROM maintenance_log').get() as { n: number }).n);
+      const inboxZero = Number(
+        (
+          db
+            .prepare(
+              "SELECT COALESCE(SUM(points), 0) AS s FROM xp_events WHERE kind = 'inbox-zero'",
+            )
+            .get() as { s: number }
+        ).s,
+      );
+      return tasks + maintenance + inboxZero;
+    };
+
+    for (let step = 0; step < 300; step++) {
       const id = ids[rand(ids.length)]!;
-      const action = rand(5);
       try {
-        if (action === 0) logs.push(store.completeTask(id).logId);
-        else if (action === 1) logs.push(store.reopenTask(id).logId);
-        else if (action === 2) logs.push(store.rescheduleTask(id, '2026-10-20').logId);
-        else if (action === 3) store.undoLatest();
-        else if (logs.length) store.undo(logs[rand(logs.length)]!);
+        switch (rand(12)) {
+          case 0:
+            logs.push(store.completeTask(id).logId);
+            break;
+          case 1:
+            logs.push(store.reopenTask(id).logId);
+            break;
+          case 2:
+            logs.push(store.rescheduleTask(id, `2026-10-${15 + rand(10)}`).logId);
+            break;
+          case 3:
+            store.undoLatest();
+            break;
+          case 4:
+            if (logs.length) store.undo(logs[rand(logs.length)]!);
+            break;
+          case 5:
+            logs.push(store.deleteTask(id).logId);
+            break;
+          case 6:
+            logs.push(store.updateTask({ id, size: sizes[rand(3)]! }).logId);
+            break;
+          case 7:
+            logs.push(store.markMaintenanceDone(item).logId);
+            break;
+          case 8:
+            logs.push(store.createTask({ title: 'step', parentId: parent }).logId);
+            break;
+          case 9:
+            logs.push(store.capture('Quick').logId ?? '');
+            break;
+          case 10:
+            logs.push(store.updateTask({ id, areaId: rand(2) ? null : home }).logId);
+            break;
+          default:
+            now = new Date(now.getTime() + rand(3) * 86_400_000);
+        }
       } catch {
-        // Some steps are refused (undoing something already undone); the ledger must still agree.
+        // Some steps are refused (undoing something already undone, a missing task).
       }
       expect(total()).toBe(ledgerSum());
-      const expected = ids
-        .map((tid) => store.getTask(tid))
-        // Undoing a task's creation removes it, along with whatever it earned.
-        .filter((t): t is NonNullable<typeof t> => t !== null && t.status === 'done')
-        .reduce(
-          (sum, t) => sum + { s: 10, m: 20, l: 40 }[t.size] * (t.deferCount >= 2 ? 1.5 : 1),
-          0,
-        );
-      expect(total()).toBe(expected);
+      expect(total()).toBe(expectedFromData());
     }
+    // No row was ever deleted: only added.
+    expect(eventCount()).toBeGreaterThan(0);
   });
 });
 
@@ -189,6 +256,21 @@ describe('inbox emptied', () => {
     const b = store.capture('Another').result.task!;
     store.updateTask({ id: b.id, areaId: area('Admin').id });
     expect(total()).toBe(10);
+  });
+
+  it('a capture after the inbox was emptied does not take the XP back', () => {
+    const a = store.capture('First').result.task!;
+    store.updateTask({ id: a.id, areaId: area('Admin').id });
+    expect(total()).toBe(10);
+    store.capture('Second');
+    expect(total()).toBe(10);
+    expect(store.takeAward().xp).toBe(10);
+  });
+
+  it('capturing and undoing the capture does not farm the bonus', () => {
+    const made = store.capture('Oops');
+    store.undo(made.logId!);
+    expect(total()).toBe(0);
   });
 
   it('pays nothing for an inbox that was never used', () => {

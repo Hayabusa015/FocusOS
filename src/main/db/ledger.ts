@@ -11,6 +11,7 @@ import type {
 import { ACHIEVEMENTS } from '../domain/achievements';
 import type { AchievementStats } from '../domain/achievements';
 import {
+  ACTIVE_DAY_WINS,
   INBOX_ZERO_XP,
   MAINTENANCE_XP,
   SHUTDOWN_XP,
@@ -192,12 +193,17 @@ export function settle(ctx: Ctx): void {
     }
   }
 
-  // Inbox emptied: once a day, and only if there was something in it today.
+  // Inbox emptied: 10, once a day, when the last item leaves it. A later capture does not take it
+  // back; only undoing the clearing does (and an undo can never award).
   const count = inboxCount(ctx);
   const sawKey = `inbox.saw.${today}`;
   if (count > 0) setFlag(ctx, sawKey);
   const emptied = count === 0 && getFlag(ctx, sawKey);
-  const zeroDiff = (emptied ? INBOX_ZERO_XP : 0) - (sums(ctx, 'inbox-zero').get(today) ?? 0);
+  const zeroHave = sums(ctx, 'inbox-zero').get(today) ?? 0;
+  const zeroWant = emptied ? INBOX_ZERO_XP : 0;
+  const zeroDiff = ctx.undoing
+    ? Math.min(0, zeroWant - zeroHave)
+    : Math.max(0, zeroWant - zeroHave);
   if (zeroDiff !== 0) {
     addEvent(ctx, 'inbox-zero', today, zeroDiff, null, stamp);
     delta += zeroDiff;
@@ -420,7 +426,7 @@ export function getSummary(ctx: Ctx): GamificationSummary {
     progress: level.progress,
     xpToday: xpOn(ctx, today),
     winsToday: byDate.get(today) ?? 0,
-    streak,
+    streak: { ...streak, threshold: ACTIVE_DAY_WINS },
     achievementsUnlocked: int(
       one(ctx, 'SELECT COUNT(*) AS n FROM achievements_unlocked') ?? {},
       'n',

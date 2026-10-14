@@ -368,7 +368,13 @@ export const GamificationSummary = z.object({
   xpToday: z.number().int(),
   winsToday: z.number().int(),
   /** "Active days in the last 7": a day is active with 3 or more wins. */
-  streak: z.object({ active: z.number().int(), of: z.literal(7), days: z.array(StreakDay) }),
+  streak: z.object({
+    active: z.number().int(),
+    of: z.literal(7),
+    /** Wins that make a day active. */
+    threshold: z.number().int(),
+    days: z.array(StreakDay),
+  }),
   achievementsUnlocked: z.number().int(),
   achievementsTotal: z.number().int(),
 });

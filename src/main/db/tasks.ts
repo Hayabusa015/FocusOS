@@ -1,4 +1,11 @@
-import { addDays, isoToLocalTime, localToIso, parseLocalDate, startOfWeek } from '@shared/dates';
+import {
+  addDays,
+  isoToLocalDate,
+  isoToLocalTime,
+  localToIso,
+  parseLocalDate,
+  startOfWeek,
+} from '@shared/dates';
 import type { LocalDate } from '@shared/dates';
 import { Recurrence } from '@shared/core';
 import type { Block, Task, TaskCreate, TaskFilter, TaskUpdate } from '@shared/core';
@@ -210,12 +217,21 @@ export function updateTask(
     const b = blockColumns(patch.block ?? null);
     start = b.start;
     minutes = b.minutes;
-  } else if (has('dueDate') && dueDate && dueDate !== t.dueDate) {
+  } else if (
+    has('dueDate') &&
+    dueDate &&
+    t.scheduledStart &&
+    (dueDate !== t.dueDate || isoToLocalDate(t.scheduledStart) !== dueDate)
+  ) {
+    // The block goes along with the date, even if the date was already that day and the block
+    // was on another (a block today for a task due tomorrow).
     start = shiftBlock(t.scheduledStart, dueDate);
   }
 
   // Pushing a due date to a later day counts as a deferral, which Atlas and the XP rules use.
-  const deferred = has('dueDate') && t.dueDate && dueDate && dueDate > t.dueDate;
+  // Bringing a slipped task forward to today is not a deferral; pushing it past today is.
+  const deferred =
+    has('dueDate') && t.dueDate && dueDate && dueDate > t.dueDate && dueDate > ctx.today();
 
   const only = (...keys: (keyof TaskUpdate)[]) =>
     Object.keys(patch).every((k) => k === 'id' || keys.includes(k as keyof TaskUpdate));

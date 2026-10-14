@@ -82,7 +82,9 @@ export function WinsPage() {
           </p>
         </Card>
         <Card label="Streak">
-          <SectionTitle hint="3 wins make an active day">Active days this week</SectionTitle>
+          <SectionTitle hint={`${summary.streak.threshold} wins make an active day`}>
+            Active days this week
+          </SectionTitle>
           <StreakDots summary={summary} />
           <p className="mt-3 text-sm text-ink-muted">
             A missed day costs one day, never the whole count.

@@ -52,6 +52,8 @@ export interface Ctx {
    * achievements in line with the data (db/ledger.ts `settle`).
    */
   afterChange?: () => void;
+  /** True while an undo is being applied: the ledger may only take points back, never award. */
+  undoing: boolean;
   /** What the last changes earned. The screen reads it once to celebrate, then clears it. */
   award: Award;
 }
@@ -79,6 +81,7 @@ export function createCtx(
     today: () => toLocalDate(clock()),
     newId,
     inMutation: false,
+    undoing: false,
     award: noAward(),
   };
 }
@@ -200,7 +203,12 @@ export function undoEntry(ctx: Ctx, id: string): UndoResult | null {
   ctx.db.exec('BEGIN IMMEDIATE');
   try {
     for (const op of [...ops].reverse()) applyOp(ctx, op);
-    ctx.afterChange?.();
+    ctx.undoing = true;
+    try {
+      ctx.afterChange?.();
+    } finally {
+      ctx.undoing = false;
+    }
     run(
       ctx,
       'UPDATE action_log SET undone_at = ?, updated_at = ? WHERE id = ?',
