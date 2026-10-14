@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { PlanDialog } from '@/components/atlas/PlanDialog';
 import { Card, ErrorNote, SectionTitle, buttonQuiet, AreaDot } from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { TaskList } from '@/components/TaskList';
@@ -12,6 +13,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
   const load = useCallback(() => window.cortex.today.get(), []);
   const { data: today, error } = useLive(load, 30_000);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [planning, setPlanning] = useState(false);
   const byId = indexAreas(areas);
   const now = new Date();
 
@@ -29,10 +31,16 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
           <h1 className="text-3xl font-semibold tracking-tight">{greeting(now)}</h1>
           <p className="mt-1 text-ink-muted">{dateText}</p>
         </div>
-        <button className={buttonQuiet} onClick={() => newTask()}>
-          Add task
-        </button>
+        <span className="flex gap-2">
+          <button className={buttonQuiet} onClick={() => setPlanning(true)}>
+            Plan the rest of today
+          </button>
+          <button className={buttonQuiet} onClick={() => newTask()}>
+            Add task
+          </button>
+        </span>
       </header>
+      {planning && <PlanDialog onClose={() => setPlanning(false)} />}
       <ErrorNote message={error ?? actionError} />
 
       {today && (

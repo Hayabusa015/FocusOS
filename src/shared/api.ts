@@ -27,6 +27,20 @@ import type {
   UndoEntry,
   UpcomingView,
 } from './core';
+import type {
+  ApplyOutcome,
+  AtlasChangeView,
+  AtlasOutcome,
+  AtlasReply,
+  AtlasStatus,
+  BrainDumpApply,
+  BrainDumpResult,
+  ChatLineView,
+  PlanApply,
+  PlanResult,
+  SortApply,
+  SortResult,
+} from './atlas-modes';
 import type { AppInfo, UpdaterState } from './schemas';
 
 /** The only thing the renderer can call. Implemented in the preload script. */
@@ -104,6 +118,25 @@ export interface CortexApi {
     completeShutdown(): Promise<{ xp: number }>;
     /** The shutdown reminder notification was clicked. */
     onOpenShutdown(listener: () => void): () => void;
+  };
+  atlas: {
+    status(): Promise<AtlasStatus>;
+    /** Saves the key (encrypted by the operating system). Returns a problem as text. */
+    setKey(key: string): Promise<AtlasOutcome<AtlasStatus>>;
+    clearKey(): Promise<AtlasStatus>;
+    /** Today's conversation. */
+    history(): Promise<ChatLineView[]>;
+    send(text: string): Promise<AtlasOutcome<AtlasReply>>;
+    /** What Atlas changed today, each with its own Undo. */
+    changes(): Promise<AtlasChangeView[]>;
+    sort(): Promise<AtlasOutcome<SortResult>>;
+    applySort(items: SortApply): Promise<AtlasOutcome<ApplyOutcome>>;
+    plan(): Promise<AtlasOutcome<PlanResult>>;
+    applyPlan(blocks: PlanApply): Promise<AtlasOutcome<ApplyOutcome>>;
+    brainDump(text: string): Promise<AtlasOutcome<BrainDumpResult>>;
+    applyBrainDump(tasks: BrainDumpApply): Promise<AtlasOutcome<ApplyOutcome>>;
+    /** A piece of the reply as it streams in. */
+    onChunk(listener: (text: string) => void): () => void;
   };
   settings: {
     get(): Promise<SettingsInfo>;

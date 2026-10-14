@@ -59,6 +59,19 @@ export const CHANNELS = {
   ritualsShutdown: 'rituals:shutdown',
   ritualsShutdownComplete: 'rituals:shutdown-complete',
 
+  atlasStatus: 'atlas:status',
+  atlasSetKey: 'atlas:set-key',
+  atlasClearKey: 'atlas:clear-key',
+  atlasHistory: 'atlas:history',
+  atlasSend: 'atlas:send',
+  atlasChanges: 'atlas:changes',
+  atlasSort: 'atlas:sort',
+  atlasSortApply: 'atlas:sort-apply',
+  atlasPlan: 'atlas:plan',
+  atlasPlanApply: 'atlas:plan-apply',
+  atlasDump: 'atlas:dump',
+  atlasDumpApply: 'atlas:dump-apply',
+
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
 } as const;
@@ -71,6 +84,8 @@ export const EVENTS = {
   captureShown: 'capture:shown',
   /** The shutdown reminder was clicked: open the ritual. */
   openShutdown: 'ritual:open-shutdown',
+  /** A piece of Atlas's reply as it streams in. */
+  atlasChunk: 'atlas:chunk',
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

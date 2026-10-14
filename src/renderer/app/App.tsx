@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AtlasPanel } from '@/components/atlas/AtlasPanel';
+import { BrainDumpDialog } from '@/components/atlas/BrainDumpDialog';
+import { PlanDialog } from '@/components/atlas/PlanDialog';
 import { Celebration } from '@/components/Celebration';
 import { FocusScreen, FocusStart } from '@/components/Focus';
 import { JustUpdatedCard } from '@/components/JustUpdatedCard';
@@ -44,6 +47,8 @@ export function App() {
     null,
   );
   const [searching, setSearching] = useState(false);
+  const [atlasOpen, setAtlasOpen] = useState(false);
+  const [atlasDialog, setAtlasDialog] = useState<'dump' | 'plan' | null>(null);
   const [overlay, setOverlay] = useState<'briefing' | 'shutdown' | null>(null);
   const [focusStart, setFocusStart] = useState<{
     taskId: string | null;
@@ -77,6 +82,9 @@ export function App() {
       if (key === 'k') {
         event.preventDefault();
         setSearching(true);
+      } else if (key === 'j') {
+        event.preventDefault();
+        setAtlasOpen((open) => !open);
       } else if (key === 'n' && !isTyping(event.target)) {
         event.preventDefault();
         setEditor({ taskId: null, areaId: null });
@@ -116,6 +124,14 @@ export function App() {
           <button className={navClass(false)} onClick={() => setSearching(true)}>
             <span>Search</span>
             <kbd className="ml-auto text-xs text-ink-muted">Ctrl K</kbd>
+          </button>
+          <button
+            className={navClass(atlasOpen)}
+            aria-pressed={atlasOpen}
+            onClick={() => setAtlasOpen((open) => !open)}
+          >
+            <span>Atlas</span>
+            <kbd className="ml-auto text-xs text-ink-muted">Ctrl J</kbd>
           </button>
           <button
             className={navClass(false)}
@@ -268,6 +284,18 @@ export function App() {
         </div>
       </main>
 
+      {atlasOpen && (
+        <AtlasPanel
+          onClose={() => setAtlasOpen(false)}
+          onSettings={() => setRoute({ page: 'settings' })}
+          onBrainDump={() => setAtlasDialog('dump')}
+          onPlan={() => setAtlasDialog('plan')}
+        />
+      )}
+      {atlasDialog === 'dump' && (
+        <BrainDumpDialog areas={areas} onClose={() => setAtlasDialog(null)} />
+      )}
+      {atlasDialog === 'plan' && <PlanDialog onClose={() => setAtlasDialog(null)} />}
       {editor && (
         <TaskEditor
           taskId={editor.taskId}

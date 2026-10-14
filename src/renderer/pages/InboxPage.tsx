@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { Task } from '@shared/core';
+import { BrainDumpDialog } from '@/components/atlas/BrainDumpDialog';
+import { SortDialog } from '@/components/atlas/SortDialog';
 import { ErrorNote, buttonQuiet } from '@/components/ui';
 import { TaskList } from '@/components/TaskList';
 import { errorMessage, useLive } from '@/hooks/useLive';
@@ -11,6 +13,7 @@ export function InboxPage({ areas, openTask, newTask }: PageProps) {
   const load = useCallback(() => window.cortex.tasks.list({ view: 'inbox' }), []);
   const { data: tasks, error } = useLive(load);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<'sort' | 'dump' | null>(null);
 
   const update = (task: Task, patch: { areaId?: string; status?: 'someday' }) => {
     setActionError(null);
@@ -28,10 +31,24 @@ export function InboxPage({ areas, openTask, newTask }: PageProps) {
             Anything you capture lands here. Pick an area, or press its number, to file it.
           </p>
         </div>
-        <button className={buttonQuiet} onClick={() => newTask()}>
-          Add task
-        </button>
+        <span className="flex gap-2">
+          <button
+            className={buttonQuiet}
+            disabled={!tasks || tasks.length === 0}
+            onClick={() => setDialog('sort')}
+          >
+            Sort with Atlas
+          </button>
+          <button className={buttonQuiet} onClick={() => setDialog('dump')}>
+            Brain dump
+          </button>
+          <button className={buttonQuiet} onClick={() => newTask()}>
+            Add task
+          </button>
+        </span>
       </header>
+      {dialog === 'sort' && <SortDialog areas={areas} onClose={() => setDialog(null)} />}
+      {dialog === 'dump' && <BrainDumpDialog areas={areas} onClose={() => setDialog(null)} />}
       <ErrorNote message={error ?? actionError} />
       {tasks && (
         <TaskList

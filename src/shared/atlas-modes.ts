@@ -90,3 +90,48 @@ export const ApplyOutcome = z.object({
   failed: z.array(z.string()),
 });
 export type ApplyOutcome = z.infer<typeof ApplyOutcome>;
+
+// --- Panel, key and spend ---------------------------------------------------------------------
+
+/** Every Atlas call answers with this, so a problem reads as a sentence, not an IPC error. */
+export type AtlasOutcome<T> =
+  | { ok: true; value: T }
+  | {
+      ok: false;
+      error: string;
+      kind: 'no-key' | 'cap' | 'unavailable' | 'refused' | 'bad-key' | 'invalid';
+    };
+
+export const AtlasKeyInput = z.object({ key: z.string().trim().min(1).max(300) });
+export const AtlasSendInput = z.object({ text: z.string().trim().min(1).max(8000) });
+
+export interface AtlasChangeView {
+  id: string;
+  summary: string;
+  createdAt: string;
+  undone: boolean;
+}
+export interface ChatLineView {
+  role: 'user' | 'assistant';
+  text: string;
+}
+export interface AtlasReply {
+  reply: string;
+  changes: { logId: string; summary: string }[];
+}
+export interface AtlasStatus {
+  hasKey: boolean;
+  /** False when the operating system cannot protect a stored key. */
+  canStoreKey: boolean;
+  spend: { today: number; week: number; month: number };
+  capUsd: number | null;
+  /** The last few calls, so Settings can show that caching is working. */
+  recent: {
+    route: string;
+    model: string;
+    cacheReadTokens: number;
+    inputTokens: number;
+    estCostUsd: number;
+  }[];
+  pricesChecked: string;
+}
