@@ -52,6 +52,9 @@
     @apply bg-ground font-sans text-ink antialiased;
     margin: 0;
   }
+  html {
+    color-scheme: dark;
+  }
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
