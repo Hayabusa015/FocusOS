@@ -101,7 +101,10 @@ export function createFakeAnthropic(script: Step[] = []) {
       const model = out.model ?? body.model;
       const stop =
         out.stop ?? (out.blocks.some((b) => b.type === 'tool_use') ? 'tool_use' : 'end_turn');
-      const content = out.blocks.map((b, i) =>
+      type Out =
+        | { type: 'text'; text: string }
+        | { type: 'tool_use'; id: string; name: string; input: unknown };
+      const content: Out[] = out.blocks.map((b, i) =>
         b.type === 'text'
           ? b
           : { type: 'tool_use', id: `toolu_${counter}_${i}`, name: b.name, input: b.input },
@@ -153,7 +156,7 @@ export function createFakeAnthropic(script: Step[] = []) {
               { type: 'content_block_delta', index, delta: { type: 'text_delta', text: piece } },
             ]);
         } else {
-          const tu = b as { id: string; name: string; input: unknown };
+          const tu = b;
           events.push([
             'content_block_start',
             {
