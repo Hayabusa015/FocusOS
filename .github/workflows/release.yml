@@ -1,0 +1,77 @@
+# Publishes a GitHub release when package.json's version is newer than the latest release.
+# A push to main without a version bump does nothing. See PLAN §11B.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.decide.outputs.should_release }}
+      version: ${{ steps.decide.outputs.version }}
+      tag: ${{ steps.decide.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Find the latest release
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+      - name: Decide
+        id: decide
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+        run: node scripts/release-check.mjs
+      - name: Keep the release notes for the build job
+        if: steps.decide.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  release:
+    needs: decide
+    if: needs.decide.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build the installer
+        run: npm run dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.decide.outputs.version }}
+          TAG: ${{ needs.decide.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Cortex $VERSION" \
+            --notes-file release-notes.md \
+            "dist/Cortex-Setup-$VERSION.exe" \
+            "dist/Cortex-Setup-$VERSION.exe.blockmap" \
+            "dist/latest.yml"
