@@ -832,7 +832,7 @@ pipeline below turns "I merged a new version" into a release, and the installed 
 - **A failed migration** stops the app with a message naming the backup file. Nothing is half-applied
   (each migration is one transaction).
 
-### Repository visibility (a decision for the user, see §15)
+### Repository visibility (decided: public, Option A)
 
 `electron-updater` reads GitHub releases anonymously only if the repository is **public**.
 
@@ -1075,10 +1075,10 @@ runs only when a key is present.
 
 ## 15. Open questions for the user
 
-Ask each one when the phase that needs it starts. **Question 0 blocks Phase 0.**
+Ask each one when the phase that needs it starts.
 
-0. **(Phase 0)** Is the FocusOS repository **public** (Option A) or private with a token (Option B)?
-   See §11B. The update feed depends on this.
+0. **(Phase 0)** ~~Public or private repository?~~ **Answered 2026-10-14: public (Option A).** No
+   token is needed. Never commit a secret, since the repository is public.
 1. **(Phase 1)** Do you want your school **bell schedule** (class periods by weekday) as fixed
    blocks on the Today timeline?
 2. **(Phase 1)** Which **sport or role** is Coaching? Are there recurring coaching tasks to seed?
