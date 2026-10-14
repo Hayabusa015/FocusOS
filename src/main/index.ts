@@ -138,7 +138,7 @@ if (!app.requestSingleInstanceLock()) {
       mode === 'real'
         ? createElectronUpdaterBackend(log)
         : mode === 'fake'
-          ? createFakeUpdaterBackend(dataDir, () => app.quit())
+          ? createFakeUpdaterBackend(dataDir, () => app.quit(), app.getVersion())
           : null;
     updater = new UpdaterController({
       backend,
