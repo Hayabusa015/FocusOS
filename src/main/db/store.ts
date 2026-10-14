@@ -13,6 +13,23 @@ import type {
 import { parseCapture } from '../domain/capture';
 import { createArea, listAreas, seedAreas, updateArea } from './areas';
 import { createCtx, latestUndoable, listLog, undoEntry } from './context';
+import {
+  activeFocus,
+  finishFocus,
+  getSummary,
+  getWinsView,
+  logWin,
+  settle,
+  startFocus,
+  takeAward,
+} from './ledger';
+import {
+  briefingView,
+  completeShutdown,
+  markBriefingShown,
+  ritualState,
+  shutdownView,
+} from './rituals';
 import type { Ctx, Mutation } from './context';
 import type { Db } from './connection';
 import {
@@ -48,6 +65,8 @@ import type { DayWindow } from './views';
  */
 export function createStore(db: Db, options: { clock?: () => Date; newId?: () => string } = {}) {
   const ctx: Ctx = createCtx(db, options.clock, options.newId);
+  // XP, wins and achievements follow the data: settled inside every change and every undo.
+  ctx.afterChange = () => settle(ctx);
 
   return {
     ctx,
@@ -112,6 +131,24 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
     getToday: (window: DayWindow) => getToday(ctx, window),
     getUpcoming: () => getUpcoming(ctx),
     search: (query: string) => search(ctx, query),
+
+    // Accomplishments (Phase 2)
+    getSummary: () => getSummary(ctx),
+    getWins: () => getWinsView(ctx),
+    logWin: (text: string) => logWin(ctx, text),
+    /** What the last changes earned, read once so the screen can celebrate. */
+    takeAward: () => takeAward(ctx),
+    activeFocus: () => activeFocus(ctx),
+    startFocus: (input: { taskId?: string | null; plannedMinutes: number }) =>
+      startFocus(ctx, input),
+    finishFocus: (id: string, completed: boolean) => finishFocus(ctx, id, completed),
+
+    // Rituals
+    ritualState: (options: { briefingEnabled: boolean }) => ritualState(ctx, options),
+    markBriefingShown: () => markBriefingShown(ctx),
+    briefing: () => briefingView(ctx),
+    shutdown: () => shutdownView(ctx),
+    completeShutdown: () => completeShutdown(ctx),
 
     // Undo
     undo: (id: string) => undoEntry(ctx, id),

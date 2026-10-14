@@ -458,6 +458,17 @@ export function listDueOn(ctx: Ctx, date: LocalDate): Task[] {
   ).map(toTask);
 }
 
+/** Open tasks with no date, in manual order, for the morning briefing's "pick your first thing". */
+export function listUndatedOpen(ctx: Ctx, limit: number): Task[] {
+  return all(
+    ctx,
+    `${SELECT} WHERE t.deleted_at IS NULL AND t.parent_id IS NULL AND t.due_date IS NULL
+       AND t.area_id IS NOT NULL AND t.status IN ('todo', 'doing')
+     ORDER BY t.sort_order, t.created_at, t.id LIMIT ?`,
+    limit,
+  ).map(toTask);
+}
+
 /** Open tasks whose day has passed. The Today page calls these "carry forward", never overdue. */
 export function listCarryForward(ctx: Ctx, today: LocalDate): Task[] {
   return all(
