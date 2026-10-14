@@ -197,6 +197,51 @@ describe('tasks', () => {
   });
 });
 
+describe('undo covers every kind of change', () => {
+  const snapshot = () =>
+    JSON.stringify(
+      ['areas', 'tasks', 'maintenance_items', 'maintenance_log'].map((t) =>
+        db.prepare(`SELECT * FROM ${t} ORDER BY id`).all(),
+      ),
+    );
+
+  it('undoing a whole session of changes, newest first, restores the data exactly', () => {
+    const before = snapshot();
+    const logged: string[] = [];
+    const track = <T extends { logId: string | null }>(m: T): T => {
+      if (m.logId) logged.push(m.logId);
+      return m;
+    };
+
+    const home = area('Home');
+    track(store.createArea({ name: 'Garden', kind: 'personal', colorToken: 'area-home' }));
+    track(store.updateArea({ id: home.id, name: 'House' }));
+    const task = track(
+      store.createTask({
+        title: 'Repeat me',
+        areaId: home.id,
+        dueDate: '2026-10-14',
+        recurrence: { freq: 'daily' },
+      }),
+    ).result;
+    const step = track(store.createTask({ title: 'Step', parentId: task.id })).result;
+    track(store.updateTask({ id: task.id, title: 'Repeat me, edited', size: 'l' }));
+    track(store.rescheduleTask(task.id, '2026-10-20'));
+    track(store.completeTask(task.id));
+    track(store.reopenTask(step.id));
+    track(store.deleteTask(step.id));
+    const item = track(store.createMaintenance({ name: 'Filter', intervalDays: 90 })).result;
+    track(store.updateMaintenance({ id: item.id, leadDays: 3 }));
+    track(store.markMaintenanceDone(item.id));
+    track(store.deleteMaintenance(item.id));
+    track(store.capture('Quick one #admin'));
+
+    expect(snapshot()).not.toBe(before);
+    for (const id of [...logged].reverse()) expect(store.undo(id)).not.toBeNull();
+    expect(snapshot()).toBe(before);
+  });
+});
+
 describe('views', () => {
   it('Today lists due and carried-forward tasks, and counts what is done', () => {
     const due = store.createTask({ title: 'Due today', dueDate: '2026-10-14' });
