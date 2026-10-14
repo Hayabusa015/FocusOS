@@ -28,6 +28,7 @@ import {
   createTask,
   deleteTask,
   getTask,
+  listBlocksOn,
   listCarryForward,
   listDueOn,
   listSubtasks,
@@ -61,6 +62,13 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
     listTasks: (filter: TaskFilter) => listTasks(ctx, filter),
     listDueOn: (date: LocalDate) => listDueOn(ctx, date),
     listCarryForward: () => listCarryForward(ctx, ctx.today()),
+    /** Tasks that can trigger a notification today: due today, or with a block today. */
+    listForNotices: (): Task[] => {
+      const today = ctx.today();
+      const seen = new Map<string, Task>();
+      for (const t of [...listDueOn(ctx, today), ...listBlocksOn(ctx, today)]) seen.set(t.id, t);
+      return [...seen.values()];
+    },
     createTask: (input: TaskCreate, source?: Task['source']) =>
       createTask(ctx, input, 'user', source),
     updateTask: (patch: TaskUpdate) => updateTask(ctx, patch),
