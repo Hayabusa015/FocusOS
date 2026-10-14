@@ -47,7 +47,7 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
           <Card label="Now and next" className="mb-4">
             {today.nowBlock ? (
               <p data-testid="now-bar">
-                <span className="text-xs font-semibold uppercase tracking-wide text-accent">
+                <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
                   Now
                 </span>
                 <span className="ml-3 text-lg font-medium">{today.nowBlock.title}</span>

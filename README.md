@@ -1,5 +1,7 @@
 # Cortex
 
+<img src="resources/logo-mark.png" alt="Cortex logo" width="120" />
+
 A personal focus app and second brain, with **Atlas**, a voice assistant. It is built for one
 person with ADHD on one Windows PC.
 

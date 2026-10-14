@@ -3,7 +3,6 @@
  * Tailwind utilities (bg-ground, text-ink, border-line, ...); nothing else in src/ may contain
  * a hex or rgb colour, and tests/unit/tokens.test.ts enforces that.
  *
- * scripts/make-icons.py also reads --color-ground and --color-accent from here.
  */
 @import 'tailwindcss';
 
@@ -11,19 +10,26 @@
   /* Drop Tailwind's default palette so only the tokens below exist. */
   --color-*: initial;
 
-  /* Ground and surfaces */
-  --color-ground: #0b0c11;
-  --color-surface: #13141b;
-  --color-raised: #1b1d27;
-  --color-line: #292c3b;
+  /* The logo palette (brand): deep indigo, violet, lavender, on paper white */
+  --color-brand-deep: #261c63;
+  --color-brand-violet: #6938f7;
+  --color-brand-lavender: #c7adfc;
+  --color-paper: #f9f7f8;
+
+  /* Ground and surfaces: the deep indigo, darkened */
+  --color-ground: #0c0a1d;
+  --color-surface: #131129;
+  --color-raised: #1c1941;
+  --color-line: #2b2757;
 
   /* Text */
-  --color-ink: #eceef5;
-  --color-ink-muted: #9ca1b5;
+  --color-ink: #efedf8;
+  --color-ink-muted: #a29fc4;
 
-  /* Brand and states */
-  --color-accent: #8f7dff;
-  --color-accent-ink: #0b0c11;
+  /* Brand and states. Violet fills; lavender is the accent for text on the dark ground. */
+  --color-accent: #6938f7;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #c7adfc;
   --color-win: #4fd1a1;
   --color-caution: #f2b84b;
   --color-alert: #ff7a85;

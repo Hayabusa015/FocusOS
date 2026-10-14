@@ -58,7 +58,7 @@ export function UndoToast() {
       <span data-testid="toast-text">{toast.text}</span>
       {logId && (
         <button
-          className="font-medium text-accent hover:underline"
+          className="font-medium text-accent-soft hover:underline"
           onClick={() => {
             setToast(null);
             window.cortex.undo

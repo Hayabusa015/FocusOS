@@ -19,7 +19,7 @@ function ItemCard({ item, onError }: { item: MaintenanceItem; onError(message: s
         <p className="font-medium">{item.name}</p>
         <p className="mt-0.5 text-sm text-ink-muted">{item.statusText}</p>
         <p
-          className={`mt-1 text-xs ${item.state === 'overdue' ? 'text-caution' : item.state === 'due-soon' ? 'text-accent' : 'text-ink-muted'}`}
+          className={`mt-1 text-xs ${item.state === 'overdue' ? 'text-caution' : item.state === 'due-soon' ? 'text-accent-soft' : 'text-ink-muted'}`}
         >
           {STATE_TEXT[item.state]} · every {item.intervalDays} days
         </p>

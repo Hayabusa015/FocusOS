@@ -4,6 +4,7 @@ import { SearchDialog } from '@/components/SearchDialog';
 import { TaskEditor } from '@/components/TaskEditor';
 import { UndoToast } from '@/components/UndoToast';
 import { UpdateBanner } from '@/components/UpdateBanner';
+import logoMark from '@/assets/logo-mark.png';
 import { Ring } from '@/components/ui';
 import { useAreas } from '@/hooks/useAreas';
 import { useLive } from '@/hooks/useLive';
@@ -75,7 +76,10 @@ export function App() {
         aria-label="Main"
         className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface p-4"
       >
-        <div className="mb-6 px-2 text-xl font-semibold tracking-tight">Cortex</div>
+        <div className="mb-6 flex items-center gap-3 px-2 text-xl font-semibold tracking-tight">
+          <img src={logoMark} alt="" width={32} height={32} className="size-8" />
+          Cortex
+        </div>
 
         <div className="mb-4 space-y-1">
           <button className={navClass(false)} onClick={() => setSearching(true)}>
