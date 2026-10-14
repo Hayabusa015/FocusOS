@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
-import type { Task } from '@shared/core';
-import { Card, Empty, ErrorNote, SectionTitle, buttonQuiet, AreaDot } from '@/components/ui';
-import { TaskRow } from '@/components/TaskRow';
+import { Card, ErrorNote, SectionTitle, buttonQuiet, AreaDot } from '@/components/ui';
+import { DailyList } from '@/components/DailyList';
+import { TaskList } from '@/components/TaskList';
 import { useLive, errorMessage } from '@/hooks/useLive';
-import { toggleTask } from '@/lib/actions';
 import { indexAreas } from '@/lib/areas';
 import { minutesText, timeOfIso } from '@/lib/dates';
 import { greeting } from '@/lib/format';
@@ -20,14 +19,8 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
     setActionError(null);
     action().catch((e: unknown) => setActionError(errorMessage(e)));
   };
-  const onToggle = (task: Task) => run(() => toggleTask(task));
 
   const dateText = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-  const nothing =
-    today &&
-    today.blocks.length === 0 &&
-    today.dueToday.length === 0 &&
-    today.carryForward.length === 0;
 
   return (
     <div>
@@ -99,13 +92,6 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
             </div>
           </Card>
 
-          {nothing && (
-            <Empty title="Nothing planned for today">
-              Press Add task, or use the capture shortcut from anywhere to drop a thought into your
-              Inbox.
-            </Empty>
-          )}
-
           {today.blocks.length > 0 && (
             <section aria-label="Timeline" className="mb-6">
               <SectionTitle>Timeline</SectionTitle>
@@ -131,47 +117,32 @@ export function TodayPage({ areas, openTask, newTask }: PageProps) {
             </section>
           )}
 
-          {today.dueToday.length > 0 && (
-            <section aria-label="Due today" className="mb-6">
-              <SectionTitle>Due today</SectionTitle>
-              <ul>
-                {today.dueToday.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    area={t.areaId ? byId.get(t.areaId) : null}
-                    onOpen={(task) => openTask(task.id)}
-                    onToggle={onToggle}
-                  />
-                ))}
-              </ul>
-            </section>
-          )}
+          <section aria-label="Today's list" className="mb-6">
+            <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
+            <Card label="Daily task list">
+              <DailyList today={today} areas={areas} openTask={openTask} />
+            </Card>
+          </section>
 
           {today.carryForward.length > 0 && (
             <section aria-label="Carried forward" className="mb-6">
               <SectionTitle hint="From earlier days. Move what still matters; the rest can wait.">
                 Carried forward
               </SectionTitle>
-              <ul>
-                {today.carryForward.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    area={t.areaId ? byId.get(t.areaId) : null}
-                    onOpen={(task) => openTask(task.id)}
-                    onToggle={onToggle}
-                    trailing={
-                      <button
-                        className="rounded-lg border border-line px-2 py-1 text-xs text-ink-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 group-hover:opacity-100"
-                        onClick={() => run(() => window.cortex.tasks.reschedule(t.id, today.date))}
-                      >
-                        Move to today
-                      </button>
-                    }
-                  />
-                ))}
-              </ul>
+              <TaskList
+                tasks={today.carryForward}
+                areas={areas}
+                onOpen={openTask}
+                onError={setActionError}
+                trailing={(t) => (
+                  <button
+                    className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 group-hover:opacity-100"
+                    onClick={() => run(() => window.cortex.tasks.reschedule(t.id, today.date))}
+                  >
+                    Move to today
+                  </button>
+                )}
+              />
             </section>
           )}
         </>

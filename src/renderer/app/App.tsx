@@ -13,6 +13,7 @@ import { areaColor } from '@/lib/areas';
 import { AreaPage } from '@/pages/AreaPage';
 import { InboxPage } from '@/pages/InboxPage';
 import { MaintenancePage } from '@/pages/MaintenancePage';
+import { DashboardPage } from '@/pages/DashboardPage';
 import { TodayPage } from '@/pages/TodayPage';
 import { SomedayPage } from '@/pages/SomedayPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
@@ -32,7 +33,7 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 export function App() {
-  const [route, setRoute] = useState<Route>({ page: 'today' });
+  const [route, setRoute] = useState<Route>({ page: 'dashboard' });
   const [editor, setEditor] = useState<{ taskId: string | null; areaId: string | null } | null>(
     null,
   );
@@ -96,6 +97,15 @@ export function App() {
         </div>
 
         <ul className="space-y-1">
+          <li>
+            <button
+              className={navClass(route.page === 'dashboard')}
+              aria-current={route.page === 'dashboard' ? 'page' : undefined}
+              onClick={() => setRoute({ page: 'dashboard' })}
+            >
+              Dashboard
+            </button>
+          </li>
           <li>
             <button
               className={navClass(route.page === 'today')}
@@ -196,6 +206,7 @@ export function App() {
         <div className="mx-auto max-w-4xl">
           {updater?.justUpdated && <JustUpdatedCard updated={updater.justUpdated} />}
           {updater && <UpdateBanner state={updater} />}
+          {route.page === 'dashboard' && <DashboardPage {...pageProps} />}
           {route.page === 'today' && <TodayPage {...pageProps} />}
           {route.page === 'inbox' && <InboxPage {...pageProps} />}
           {route.page === 'upcoming' && <UpcomingPage {...pageProps} />}

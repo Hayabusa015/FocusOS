@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { WEEKDAY_SHORT } from '@shared/dates';
 import type { Area, Recurrence, Task, TaskSize, TaskStatus } from '@shared/core';
 import { errorMessage, useLive } from '@/hooks/useLive';
-import { buttonPrimary, buttonQuiet, ErrorNote, inputClass } from './ui';
+import { buttonPrimary, buttonQuiet, Check, ErrorNote, inputClass, Switch } from './ui';
 
 type Kind = Recurrence['freq'] | 'none';
 
@@ -112,7 +112,7 @@ function EditorShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-ground/70"
+      className="fixed inset-0 z-40 flex justify-end bg-brand-black/40"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -328,7 +328,7 @@ function EditorForm({
                 type="number"
                 min={1}
                 max={31}
-                className={`${inputClass} w-20`}
+                className={`${inputClass} w-20!`}
                 value={draft.dayOfMonth}
                 onChange={(e) => set('dayOfMonth', Number(e.target.value) || 1)}
               />
@@ -341,7 +341,7 @@ function EditorForm({
                 type="number"
                 min={1}
                 max={365}
-                className={`${inputClass} w-20`}
+                className={`${inputClass} w-20!`}
                 value={draft.everyN}
                 onChange={(e) => set('everyN', Number(e.target.value) || 1)}
               />
@@ -355,12 +355,11 @@ function EditorForm({
 
         <fieldset className="space-y-2 text-sm">
           <legend className="mb-1 text-ink-muted">Time block on Today</legend>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="accent-accent"
+          <label className="flex items-center gap-3">
+            <Switch
               checked={draft.blockOn}
-              onChange={(e) => set('blockOn', e.target.checked)}
+              onChange={(next) => set('blockOn', next)}
+              label="Put it on my timeline"
             />
             Put it on my timeline
           </label>
@@ -408,10 +407,9 @@ function EditorForm({
             <h3 className="text-ink-muted">Steps</h3>
             {subtasks.map((s) => (
               <label key={s.id} className="flex items-center gap-2 py-0.5">
-                <input
-                  type="checkbox"
-                  className="accent-accent"
+                <Check
                   checked={s.status === 'done'}
+                  label={s.status === 'done' ? `Reopen ${s.title}` : `Complete ${s.title}`}
                   onChange={() =>
                     void run(() =>
                       s.status === 'done'

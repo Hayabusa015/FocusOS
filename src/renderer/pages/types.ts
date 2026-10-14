@@ -1,6 +1,7 @@
 import type { Area } from '@shared/core';
 
 export type Route =
+  | { page: 'dashboard' }
   | { page: 'today' }
   | { page: 'inbox' }
   | { page: 'upcoming' }

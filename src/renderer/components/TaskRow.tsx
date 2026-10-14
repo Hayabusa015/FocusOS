@@ -1,6 +1,6 @@
 import type { Area, Task } from '@shared/core';
 import { friendlyDate, friendlyTime } from '@/lib/dates';
-import { AreaTag } from './ui';
+import { AreaTag, Check } from './ui';
 
 interface Props {
   task: Task;
@@ -33,11 +33,9 @@ export function TaskRow({
       data-testid="task-row"
       onKeyDown={onKeyDown}
     >
-      <input
-        type="checkbox"
+      <Check
         checked={done}
-        aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-        className="size-5 shrink-0 cursor-pointer accent-accent"
+        label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         onChange={() => onToggle(task)}
       />
       <button className="min-w-0 flex-1 text-left" onClick={() => onOpen(task)}>

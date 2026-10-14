@@ -103,6 +103,8 @@ export const Task = z.object({
   source: TaskSource,
   completedAt: z.string().nullable(),
   createdAt: z.string(),
+  /** Manual order: lists sort by this first. */
+  sortOrder: z.number().int(),
   subtaskCount: z.number().int(),
   subtasksDone: z.number().int(),
 });
@@ -127,6 +129,8 @@ export const TaskUpdate = z.object({
   title: Title.optional(),
   notes: Notes.nullable().optional(),
   areaId: Id.nullable().optional(),
+  /** A task id makes this a step of it; null makes it a main task again. */
+  parentId: Id.nullable().optional(),
   status: TaskStatus.optional(),
   dueDate: LocalDateSchema.nullable().optional(),
   dueTime: TimeSchema.nullable().optional(),
@@ -143,6 +147,8 @@ export const TaskFilter = z.object({
 export type TaskFilter = z.infer<typeof TaskFilter>;
 
 export const TaskId = z.object({ id: Id });
+export const TaskReorder = z.object({ ids: z.array(Id).min(1).max(500) });
+export const TaskChildrenRequest = z.object({ ids: z.array(Id).max(500) });
 export const TaskReschedule = z.object({ id: Id, dueDate: LocalDateSchema });
 
 // --- Quick capture -------------------------------------------------------------------------
@@ -235,6 +241,8 @@ export const TodayView = z.object({
   nextBlock: BlockView.extend({ startsInMinutes: z.number().int() }).nullable(),
   blocks: z.array(BlockView),
   dueToday: z.array(Task),
+  /** Finished today, so the daily list can show them checked off. */
+  doneToday: z.array(Task),
   carryForward: z.array(Task),
   counters: z.object({
     tasksDone: z.number().int(),

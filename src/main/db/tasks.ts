@@ -48,6 +48,7 @@ export function toTask(r: Row): Task {
     source: str(r, 'source') as Task['source'],
     completedAt: strOrNull(r, 'completed_at'),
     createdAt: str(r, 'created_at'),
+    sortOrder: int(r, 'sort_order'),
     subtaskCount: int(r, 'subtask_count'),
     subtasksDone: int(r, 'subtasks_done'),
   };
@@ -61,9 +62,15 @@ export function getTask(ctx: Ctx, id: string): Task | null {
 export function listSubtasks(ctx: Ctx, parentId: string): Task[] {
   return all(
     ctx,
-    `${SELECT} WHERE t.parent_id = ? AND t.deleted_at IS NULL ORDER BY t.created_at, t.id`,
+    `${SELECT} WHERE t.parent_id = ? AND t.deleted_at IS NULL ORDER BY t.sort_order, t.created_at, t.id`,
     parentId,
   ).map(toTask);
+}
+
+/** One step past the highest manual order, so a new task goes to the end of every list. */
+function nextSortOrder(ctx: Ctx): number {
+  const r = one(ctx, 'SELECT COALESCE(MAX(sort_order), 0) AS m FROM tasks');
+  return Number(r?.['m'] ?? 0) + 10;
 }
 
 function must(ctx: Ctx, id: string): Task {
@@ -124,8 +131,9 @@ export function createTask(
     run(
       ctx,
       `INSERT INTO tasks (id, title, notes, area_id, parent_id, status, due_date, due_time,
-         scheduled_start, scheduled_minutes, size, recurrence, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         scheduled_start, scheduled_minutes, size, recurrence, source, created_at, updated_at,
+         sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.title,
       input.notes ?? null,
@@ -141,6 +149,7 @@ export function createTask(
       source,
       stamp,
       stamp,
+      nextSortOrder(ctx),
     );
     tx.created('tasks', id);
     return { result: must(ctx, id), summary: `Added ${quote(input.title)}` };
@@ -157,7 +166,7 @@ export function updateTask(
   if (patch.areaId && !getArea(ctx, patch.areaId)) throw new Error('That area does not exist');
 
   const has = <K extends keyof TaskUpdate>(k: K) => patch[k] !== undefined;
-  const areaId = has('areaId') ? (patch.areaId ?? null) : t.areaId;
+  let areaId = has('areaId') ? (patch.areaId ?? null) : t.areaId;
   const dueDate = has('dueDate') ? (patch.dueDate ?? null) : t.dueDate;
   const recurrence = has('recurrence') ? (patch.recurrence ?? null) : t.recurrence;
   assertSane(recurrence, dueDate);
@@ -167,6 +176,32 @@ export function updateTask(
   if (!has('status') && has('areaId') && areaId && t.status === 'inbox') status = 'todo';
   if (!has('status') && has('areaId') && !areaId && t.status === 'todo' && !t.parentId)
     status = 'inbox';
+
+  // Indent (make it a step of another task) or outdent (make it a task again). One level only.
+  let parentId = t.parentId;
+  let sortOrder: number | null = null;
+  if (has('parentId') && (patch.parentId ?? null) !== t.parentId) {
+    parentId = patch.parentId ?? null;
+    if (parentId) {
+      const parent = getTask(ctx, parentId);
+      if (!parent) throw new Error('The parent task no longer exists');
+      if (parent.id === t.id) throw new Error('A task cannot be a step of itself');
+      if (parent.parentId) throw new Error('Steps go one level deep only');
+      if (t.subtaskCount > 0) throw new Error('Move its steps out first: steps go one level deep');
+      const last = one(
+        ctx,
+        'SELECT COALESCE(MAX(sort_order), 0) AS m FROM tasks WHERE parent_id = ? AND deleted_at IS NULL',
+        parentId,
+      );
+      sortOrder = Math.max(Number(last?.['m'] ?? 0), parent.sortOrder) + 1;
+      if (!has('areaId') && !areaId) areaId = parent.areaId;
+      if (!has('status') && status === 'inbox') status = 'todo';
+    } else {
+      // Back out to the main list, right after the task it came from.
+      const former = t.parentId ? getTask(ctx, t.parentId) : null;
+      sortOrder = (former?.sortOrder ?? nextSortOrder(ctx)) + 1;
+    }
+  }
 
   // A time block: set, cleared, or carried along when the due date moves.
   let start = t.scheduledStart;
@@ -188,6 +223,9 @@ export function updateTask(
   if (only('status') && status === 'someday') summary = `Moved ${quote(t.title)} to Someday`;
   else if (only('dueDate') && dueDate)
     summary = `Moved ${quote(t.title)} to ${prettyDate(dueDate)}`;
+  else if (only('parentId') && parentId)
+    summary = `Made ${quote(t.title)} a step of ${quote(getTask(ctx, parentId)?.title ?? 'a task')}`;
+  else if (only('parentId') && !parentId) summary = `Moved ${quote(t.title)} out to the main list`;
   else if (only('areaId') && areaId) {
     summary = `Sorted ${quote(t.title)} into ${getArea(ctx, areaId)?.name ?? 'an area'}`;
   }
@@ -198,7 +236,8 @@ export function updateTask(
       ctx,
       `UPDATE tasks SET title = ?, notes = ?, area_id = ?, status = ?, due_date = ?, due_time = ?,
          scheduled_start = ?, scheduled_minutes = ?, size = ?, recurrence = ?, defer_count = ?,
-         completed_at = ?, updated_at = ? WHERE id = ?`,
+         completed_at = ?, parent_id = ?, sort_order = COALESCE(?, sort_order), updated_at = ?
+       WHERE id = ?`,
       patch.title ?? t.title,
       has('notes') ? (patch.notes ?? null) : t.notes,
       areaId,
@@ -211,6 +250,8 @@ export function updateTask(
       recurrence ? JSON.stringify(recurrence) : null,
       t.deferCount + (deferred ? 1 : 0),
       t.completedAt,
+      parentId,
+      sortOrder,
       ctx.nowIso(),
       t.id,
     );
@@ -335,12 +376,12 @@ export function listTasks(ctx: Ctx, filter: TaskFilter): Task[] {
   const base = `${SELECT} WHERE t.deleted_at IS NULL AND t.parent_id IS NULL`;
   const weekStart = localToIso(startOfWeek(ctx.today()), '00:00');
   const byDueThenNew =
-    'ORDER BY t.due_date IS NULL, t.due_date, t.due_time IS NULL, t.due_time, t.created_at, t.id';
+    'ORDER BY t.sort_order, t.due_date IS NULL, t.due_date, t.due_time IS NULL, t.due_time, t.created_at, t.id';
   switch (filter.view) {
     case 'inbox':
       return all(
         ctx,
-        `${base} AND t.area_id IS NULL AND t.status IN ${OPEN} ORDER BY t.created_at DESC, t.id DESC`,
+        `${base} AND t.area_id IS NULL AND t.status IN ${OPEN} ORDER BY t.sort_order, t.created_at, t.id`,
       ).map(toTask);
     case 'someday':
       return all(ctx, `${base} AND t.status = 'someday' ORDER BY t.created_at DESC, t.id DESC`).map(
@@ -363,12 +404,56 @@ export function listTasks(ctx: Ctx, filter: TaskFilter): Task[] {
   }
 }
 
+/**
+ * Puts tasks in the order given (a drag). The tasks swap their existing order numbers among
+ * themselves, so anything else in the list stays exactly where it was.
+ */
+export function reorderTasks(
+  ctx: Ctx,
+  ids: string[],
+  actor: 'user' | 'atlas' = 'user',
+): Mutation<void> {
+  const tasks = ids.map((id) => must(ctx, id));
+  if (new Set(ids).size !== ids.length) throw new Error('Each task can be listed once');
+  const slots = tasks.map((t) => t.sortOrder).sort((a, b) => a - b);
+  const changes = tasks.filter((t, i) => t.sortOrder !== slots[i]);
+  if (changes.length === 0) return { result: undefined, logId: '', summary: '' };
+  return mutate(ctx, actor, 'task.reorder', (tx) => {
+    const stamp = ctx.nowIso();
+    tasks.forEach((t, i) => {
+      const slot = slots[i] as number;
+      if (t.sortOrder === slot) return;
+      tx.before('tasks', t.id);
+      run(ctx, 'UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ?', slot, stamp, t.id);
+    });
+    return { result: undefined, summary: `Reordered ${tasks.length} tasks` };
+  });
+}
+
+/** The steps of each given task, in one read. */
+export function listChildren(ctx: Ctx, parentIds: string[]): Record<string, Task[]> {
+  const out: Record<string, Task[]> = {};
+  for (const id of parentIds) out[id] = listSubtasks(ctx, id);
+  return out;
+}
+
+/** Top-level tasks finished on `date`, newest first. */
+export function listCompletedOn(ctx: Ctx, date: LocalDate): Task[] {
+  return all(
+    ctx,
+    `${SELECT} WHERE t.deleted_at IS NULL AND t.parent_id IS NULL AND t.status = 'done'
+       AND t.completed_at >= ? AND t.completed_at < ? ORDER BY t.completed_at DESC, t.id`,
+    localToIso(date, '00:00'),
+    localToIso(addDays(date, 1), '00:00'),
+  ).map(toTask);
+}
+
 /** Open, top-level tasks due on `date`. */
 export function listDueOn(ctx: Ctx, date: LocalDate): Task[] {
   return all(
     ctx,
     `${SELECT} WHERE t.deleted_at IS NULL AND t.parent_id IS NULL AND t.status IN ${OPEN} AND t.due_date = ?
-     ORDER BY t.due_time IS NULL, t.due_time, t.created_at, t.id`,
+     ORDER BY t.sort_order, t.due_time IS NULL, t.due_time, t.created_at, t.id`,
     date,
   ).map(toTask);
 }

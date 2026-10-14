@@ -235,10 +235,107 @@ describe('undo covers every kind of change', () => {
     track(store.markMaintenanceDone(item.id));
     track(store.deleteMaintenance(item.id));
     track(store.capture('Quick one #admin'));
+    const other = track(store.createTask({ title: 'Other', areaId: home.id })).result;
+    track(store.reorderTasks([other.id, task.id]));
+    track(store.updateTask({ id: other.id, parentId: task.id }));
+    track(store.updateTask({ id: other.id, parentId: null }));
 
     expect(snapshot()).not.toBe(before);
     for (const id of [...logged].reverse()) expect(store.undo(id)).not.toBeNull();
     expect(snapshot()).toBe(before);
+  });
+});
+
+describe('manual order and steps', () => {
+  const titles = (tasks: { title: string }[]) => tasks.map((t) => t.title);
+
+  it('lists new tasks at the end and reorders by drag', () => {
+    const a = store.createTask({ title: 'A', areaId: area('Home').id }).result;
+    const b = store.createTask({ title: 'B', areaId: area('Home').id }).result;
+    const c = store.createTask({ title: 'C', areaId: area('Home').id }).result;
+    const home = { view: 'area', areaId: area('Home').id } as const;
+    expect(titles(store.listTasks(home))).toEqual(['A', 'B', 'C']);
+
+    const moved = store.reorderTasks([c.id, a.id, b.id]);
+    expect(titles(store.listTasks(home))).toEqual(['C', 'A', 'B']);
+    // A task added after a reorder still goes to the end.
+    store.createTask({ title: 'D', areaId: area('Home').id });
+    expect(titles(store.listTasks(home))).toEqual(['C', 'A', 'B', 'D']);
+
+    store.undo(moved.logId);
+    expect(titles(store.listTasks(home))).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('a drag in a filtered list leaves the other tasks where they were', () => {
+    const a = store.createTask({ title: 'A', areaId: area('Home').id }).result;
+    store.createTask({ title: 'Other', areaId: area('Admin').id });
+    const c = store.createTask({ title: 'C', areaId: area('Home').id }).result;
+    store.reorderTasks([c.id, a.id]);
+    expect(titles(store.listTasks({ view: 'area', areaId: area('Home').id }))).toEqual(['C', 'A']);
+    expect(titles(store.listTasks({ view: 'area', areaId: area('Admin').id }))).toEqual(['Other']);
+  });
+
+  it('a reorder that changes nothing logs nothing', () => {
+    const a = store.createTask({ title: 'A' }).result;
+    const before = store.listLog(50).length;
+    const out = store.reorderTasks([a.id]);
+    expect(out.logId).toBe('');
+    expect(store.listLog(50)).toHaveLength(before);
+  });
+
+  it('indents a task under another and outdents it back, with undo', () => {
+    const parent = store.createTask({ title: 'Parent', areaId: area('Home').id }).result;
+    const child = store.createTask({ title: 'Child', areaId: area('Home').id }).result;
+
+    const indent = store.updateTask({ id: child.id, parentId: parent.id });
+    expect(indent.result.parentId).toBe(parent.id);
+    expect(store.getTask(parent.id)?.subtaskCount).toBe(1);
+    expect(titles(store.listTasks({ view: 'area', areaId: area('Home').id }))).toEqual(['Parent']);
+
+    const outdent = store.updateTask({ id: child.id, parentId: null });
+    expect(outdent.result.parentId).toBeNull();
+    expect(titles(store.listTasks({ view: 'area', areaId: area('Home').id }))).toEqual([
+      'Parent',
+      'Child',
+    ]);
+    store.undo(outdent.logId);
+    expect(store.getTask(child.id)?.parentId).toBe(parent.id);
+  });
+
+  it('keeps steps one level deep', () => {
+    const a = store.createTask({ title: 'A' }).result;
+    const b = store.createTask({ title: 'B' }).result;
+    const c = store.createTask({ title: 'C' }).result;
+    store.updateTask({ id: b.id, parentId: a.id });
+    // C cannot go under B (already a step), and A cannot go under C (it has steps).
+    expect(() => store.updateTask({ id: c.id, parentId: b.id })).toThrow(/one level/);
+    expect(() => store.updateTask({ id: a.id, parentId: c.id })).toThrow(/one level/);
+    expect(() => store.updateTask({ id: a.id, parentId: a.id })).toThrow();
+  });
+
+  it('orders steps by their manual order and lists steps for many tasks at once', () => {
+    const p = store.createTask({ title: 'P' }).result;
+    const s1 = store.createTask({ title: 's1', parentId: p.id }).result;
+    const s2 = store.createTask({ title: 's2', parentId: p.id }).result;
+    store.reorderTasks([s2.id, s1.id]);
+    expect(titles(store.listChildren([p.id])[p.id] ?? [])).toEqual(['s2', 's1']);
+  });
+
+  it('Today lists what was finished today, so the daily list can show it checked off', () => {
+    const t = store.createTask({ title: 'Done thing', dueDate: '2026-10-14' }).result;
+    store.createTask({ title: 'Open thing', dueDate: '2026-10-14' });
+    store.completeTask(t.id);
+    const view = store.getToday({ dayStart: '07:00', dayEnd: '22:00' });
+    expect(titles(view.doneToday)).toEqual(['Done thing']);
+    expect(titles(view.dueToday)).toEqual(['Open thing']);
+  });
+
+  it('the daily list follows the manual order', () => {
+    const a = store.createTask({ title: 'A', dueDate: '2026-10-14', dueTime: '09:00' }).result;
+    const b = store.createTask({ title: 'B', dueDate: '2026-10-14', dueTime: '08:00' }).result;
+    expect(titles(store.listDueOn('2026-10-14'))).toEqual(['A', 'B']);
+    store.reorderTasks([b.id, a.id]);
+    expect(titles(store.listDueOn('2026-10-14'))).toEqual(['B', 'A']);
   });
 });
 

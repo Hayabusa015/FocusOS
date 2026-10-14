@@ -25,6 +25,8 @@ export const CHANNELS = {
   tasksReopen: 'tasks:reopen',
   tasksDelete: 'tasks:delete',
   tasksReschedule: 'tasks:reschedule',
+  tasksReorder: 'tasks:reorder',
+  tasksChildren: 'tasks:children',
 
   captureSubmit: 'capture:submit',
   captureHide: 'capture:hide',

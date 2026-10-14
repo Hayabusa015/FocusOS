@@ -11,7 +11,9 @@ import {
   SearchQuery,
   TaskCreate,
   TaskFilter,
+  TaskChildrenRequest,
   TaskId,
+  TaskReorder,
   TaskReschedule,
   TaskUpdate,
   UndoApply,
@@ -74,6 +76,9 @@ export function registerCoreIpc(deps: CoreIpcDeps): void {
     ({ id, dueDate }) => changed(store.rescheduleTask(id, dueDate)),
     trust,
   );
+
+  handle(CHANNELS.tasksReorder, TaskReorder, ({ ids }) => changed(store.reorderTasks(ids)), trust);
+  handle(CHANNELS.tasksChildren, TaskChildrenRequest, ({ ids }) => store.listChildren(ids), trust);
 
   handle(CHANNELS.captureSubmit, CaptureSubmit, ({ text }) => changed(store.capture(text)), trust);
   handle(CHANNELS.captureHide, Empty, () => deps.hideCapture(), trust);

@@ -50,6 +50,10 @@ export interface CortexApi {
     reopen(id: string): Promise<Task>;
     delete(id: string): Promise<void>;
     reschedule(id: string, dueDate: string): Promise<Task>;
+    /** Puts these tasks in this order (a drag). */
+    reorder(ids: string[]): Promise<void>;
+    /** The steps of each given task. */
+    children(ids: string[]): Promise<Record<string, Task[]>>;
   };
   capture: {
     submit(text: string): Promise<CaptureResult>;
