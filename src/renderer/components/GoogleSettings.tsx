@@ -29,6 +29,13 @@ export function GoogleSettings() {
   const [problem, setProblem] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirmOff, setConfirmOff] = useState(false);
+  // A switch answers at once; the sync that follows can take a moment.
+  // It holds until the next sync result arrives, which carries the saved choice.
+  const [chosen, setChosen] = useState<Record<string, { on: boolean; after: string | null }>>({});
+  const shown = (c: { id: string; selected: boolean }): boolean => {
+    const pick = chosen[c.id];
+    return pick && pick.after === (status?.calendar.lastSync ?? null) ? pick.on : c.selected;
+  };
   const s = info?.settings;
 
   const update = (patch: AppSettingsPatch) => {
@@ -72,10 +79,15 @@ export function GoogleSettings() {
 
   const toggleCalendar = (id: string, on: boolean) => {
     if (!status) return;
-    const chosen = status.calendars.filter((c) => c.selected && !c.isCortex).map((c) => c.id);
-    void run('sync', () =>
-      window.cortex.google.setCalendars(on ? [...chosen, id] : chosen.filter((x) => x !== id)),
-    );
+    const now = status.calendars.filter((c) => shown(c) && !c.isCortex).map((c) => c.id);
+    setChosen((all) => ({ ...all, [id]: { on, after: status.calendar.lastSync } }));
+    void run('sync', async () => {
+      const outcome = await window.cortex.google.setCalendars(
+        on ? [...now, id] : now.filter((x) => x !== id),
+      );
+      if (!outcome.ok) setChosen({});
+      return outcome;
+    });
   };
 
   return (
@@ -202,7 +214,7 @@ export function GoogleSettings() {
                         </span>
                         <Switch
                           label={`Show ${c.name}`}
-                          checked={c.selected}
+                          checked={shown(c)}
                           onChange={(next) => (c.isCortex ? undefined : toggleCalendar(c.id, next))}
                         />
                       </li>

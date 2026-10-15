@@ -3,6 +3,28 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.5.0] - 2026-10-15
+
+Google, if you want it: your calendar on Today, your time blocks on your phone, and email turned into
+suggested tasks. It is all optional. Cortex works exactly as before without it.
+
+- **Settings → Google.** Sign in once with your own Google project (the step-by-step guide is
+  `docs/GOOGLE_SETUP.md`). Choose which calendars to show. Disconnect any time; the sign-in and the
+  cached events are forgotten and nothing else changes.
+- **Your calendar on Today.** Events from the calendars you choose sit in your schedule in a plainer
+  style than your tasks. All-day events appear above it. The Planner now works around them.
+- **A calendar named Cortex.** Every time block you set is mirrored to it, so it shows up on your
+  phone. Move one in Google and the block moves in Cortex (the newer change wins); delete it in
+  Google and the block is cleared. **Cortex writes to that calendar only.** Google itself refuses
+  anything else, because the permission Cortex asks for reaches only calendars Cortex made.
+- **Email suggestions.** Atlas reads the sender, subject, date and a short snippet of new inbox mail
+  (never the body or attachments) and proposes tasks in a tray on the Inbox. Nothing becomes a task
+  until you press Accept (you can edit it first) or Dismiss. A message is never suggested twice.
+  Email is never sent. It needs your Atlas key.
+- If Google refuses Cortex permission to read Gmail, email suggestions switch themselves off and
+  Calendar keeps working. Settings says so.
+- Sign-ins are stored encrypted by Windows, on this PC only.
+
 ## [0.4.1] - 2026-10-15
 
 A brighter pulse for your day: charcoal surfaces, gold light and violet gradients.

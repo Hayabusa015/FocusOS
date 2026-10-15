@@ -17,7 +17,7 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 | 2 | Accomplishments and rituals | Built (0.2.0); waiting on the user's checks on Windows (the 15:30 shutdown reminder, sounds, the morning briefing on a real morning). The Phase 2 question in §15 (shutdown time) is still open; built with the 15:30 weekday default |
 | 3 | Atlas (text) | Built (0.3.0); waiting on the user's checks with a real API key (a chat, Sort, Plan and Brain dump, then `npm run test:live`). Prices in `atlas/pricing.ts` were checked 2026-10-14; the live test is the first check against the real API |
 | 4 | Atlas (voice) | Built (0.4.0); waiting on the user's checks on the PC: run `node scripts/check-voicestudio.mjs` against the real VoiceStudio, first-audio time on the GTX 1080, the `Control+Alt+Space` hotkey, and the Windows fallback voice. Sentence streaming uses one `POST /v1/audio/speech` per sentence (approved), not `/ws/tts`. The Phase 4 voice question in §15 (which voice) is open; built with the default |
-| 5 | Google Calendar and Gmail | Not started |
+| 5 | Google Calendar and Gmail | Built (0.5.0); waiting on the user's checks on the PC with a real Google account: follow `docs/GOOGLE_SETUP.md`, sign in, see events on Today, schedule a task and see it in the "Cortex" calendar, move it in Google, and check email suggestions. **Open: whether `gmail.readonly` is accepted for a personal unverified in-production app (§9.1 step 4).** The app records the answer at sign-in and shows it in Settings → Google; if Google refuses it, Calendar keeps working and email suggestions switch off. Two approved changes to §4 and §9.2: the smaller `@googleapis/calendar`, `@googleapis/gmail` and `google-auth-library` packages replace `googleapis`, and the scopes became `calendar.app.created`, `calendar.events.readonly`, `calendar.calendarlist.readonly`, `gmail.readonly` (the plan's `calendar.events` cannot create the Cortex calendar) |
 | 6 | Obsidian second brain | Not started |
 | 7 | Knowledge and learning | Not started |
 | 8 | WorkWork bridge | Not started |
@@ -142,7 +142,7 @@ Every feature is judged against three questions:
 | Database | SQLite (see the spike in Phase 0) | |
 | Validation | Zod | IPC payloads, tool inputs, settings |
 | Claude | `@anthropic-ai/sdk` (official TypeScript SDK) | §7 |
-| Google | `googleapis` | §9 |
+| Google | `@googleapis/calendar`, `@googleapis/gmail`, `google-auth-library` (the per-product packages from Google's `googleapis`; changed with the user's approval, 2026-10-15, for a much smaller installer) | §9 |
 | Updates | `electron-updater`, with GitHub Releases as the feed | §11B |
 | Vault files | `gray-matter` for frontmatter and `chokidar` for watching the vault folder | §11A |
 | File text | `mammoth` (.docx), `jszip` (.pptx slide XML), `pdfjs-dist` (.pdf) | §11C |
@@ -562,7 +562,11 @@ of them runs in the background on its own except the Reviewer's weekly schedule.
 ### 9.2 OAuth
 
 - Uses the loopback redirect (`http://127.0.0.1:<random port>`) with PKCE.
-- **Scopes:** `calendar.events`, `calendar.calendarlist.readonly`, `gmail.readonly`.
+- **Scopes:** `calendar.app.created`, `calendar.events.readonly`, `calendar.calendarlist.readonly`,
+  `gmail.readonly`. (Changed with the user's approval, 2026-10-15: the original `calendar.events`
+  cannot create a calendar. `calendar.app.created` creates the "Cortex" calendar and lets Cortex
+  edit events only on calendars it created, so Google refuses a write to any of the user's own
+  calendars. Reading the others is `calendar.events.readonly`.)
 - **Token storage:** refresh token encrypted with Electron `safeStorage` (Windows DPAPI).
 
 ### 9.3 Calendar

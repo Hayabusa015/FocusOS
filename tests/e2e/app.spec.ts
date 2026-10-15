@@ -111,6 +111,7 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
         'atlas',
         'capture',
         'focus',
+        'google',
         'maintenance',
         'onDataChanged',
         'rituals',
