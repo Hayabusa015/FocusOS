@@ -58,6 +58,8 @@
 
   /* One easing for the whole app: quick to start, a soft landing. Never linear, never default. */
   --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The bounce: overshoots a little and settles. Used for things that move with intent. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
   --default-transition-duration: 220ms;
 }

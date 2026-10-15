@@ -13,6 +13,9 @@ A dark look, and a day you can read at a glance. Nothing works differently.
   long is left), and your tasks, blocks, inbox and XP each with a row of small bars.
 - **A real schedule.** Your time blocks in order, tinted with their area's colour, the block you are
   in outlined, and a line with the time showing where now falls. On the Dashboard and on Today.
+- **A nav that moves.** A gold highlight springs between pages with a small bounce, items nudge
+  right and glow when you point at them, the items slide in when the app opens, and each class has
+  a slim bar in its colour (filled to the week's progress) instead of a ring.
 - **A lit fill.** Progress bars (level, your day, the segmented bars) and the day gauge glow in the colour they are filled with.
 - **A voice.** Headings and big numbers use Bricolage Grotesque (bundled, works offline). Labels
   are in plain sentence case, pages ease in, sheets are a plate in a tray with a violet-tinted
