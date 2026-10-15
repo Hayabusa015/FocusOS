@@ -9,6 +9,7 @@ import { MorningBriefing } from '@/components/MorningBriefing';
 import { ShutdownRitual } from '@/components/ShutdownRitual';
 import { SearchDialog } from '@/components/SearchDialog';
 import { SideNav } from '@/components/SideNav';
+import { useSidebarCollapsed } from '@/hooks/useSidebarCollapsed';
 import { TaskEditor } from '@/components/TaskEditor';
 import { UndoToast } from '@/components/UndoToast';
 import { UpdateBanner } from '@/components/UpdateBanner';
@@ -41,6 +42,7 @@ export function App() {
   );
   const [searching, setSearching] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   const [atlasDialog, setAtlasDialog] = useState<'dump' | 'plan' | null>(null);
   const [overlay, setOverlay] = useState<'briefing' | 'shutdown' | null>(null);
   const [focusStart, setFocusStart] = useState<{
@@ -81,11 +83,14 @@ export function App() {
       } else if (key === 'n' && !isTyping(event.target)) {
         event.preventDefault();
         setEditor({ taskId: null, areaId: null });
+      } else if (key === 'b' && !isTyping(event.target)) {
+        event.preventDefault();
+        toggleSidebar();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [toggleSidebar]);
 
   const pageProps: PageProps = {
     areas,
@@ -110,6 +115,8 @@ export function App() {
         inboxCount={inboxCount}
         version={version}
         atlasOpen={atlasOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebar}
         go={setRoute}
         onSearch={() => setSearching(true)}
         onToggleAtlas={() => setAtlasOpen((open) => !open)}
