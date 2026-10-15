@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { toLocalDate } from '@shared/dates';
+import { addDays, localToIso, toLocalDate } from '@shared/dates';
 import type { LocalDate } from '@shared/dates';
 import { ulid } from '../domain/ulid';
 import type { Db } from './connection';
@@ -21,6 +21,7 @@ export const UNDOABLE_TABLES = [
   'maintenance_items',
   'maintenance_log',
   'wins',
+  'focus_sessions',
 ] as const;
 export type UndoableTable = (typeof UNDOABLE_TABLES)[number];
 
@@ -235,16 +236,18 @@ export interface LogEntry {
   undone: boolean;
 }
 
+const toLogEntry = (r: Row): LogEntry => ({
+  id: str(r, 'id'),
+  actor: str(r, 'actor') as 'user' | 'atlas',
+  action: str(r, 'action'),
+  summary: String((JSON.parse(str(r, 'payload_json')) as { summary?: string }).summary ?? ''),
+  createdAt: str(r, 'created_at'),
+  undone: r['undone_at'] !== null,
+});
+
 export function listLog(ctx: Ctx, limit = 20): LogEntry[] {
   return all(ctx, 'SELECT * FROM action_log ORDER BY created_at DESC, id DESC LIMIT ?', limit).map(
-    (r) => ({
-      id: str(r, 'id'),
-      actor: str(r, 'actor') as 'user' | 'atlas',
-      action: str(r, 'action'),
-      summary: String((JSON.parse(str(r, 'payload_json')) as { summary?: string }).summary ?? ''),
-      createdAt: str(r, 'created_at'),
-      undone: r['undone_at'] !== null,
-    }),
+    toLogEntry,
   );
 }
 
@@ -256,4 +259,17 @@ export function latestUndoable(ctx: Ctx): LogEntry | null {
   );
   if (!r) return null;
   return listLog(ctx, 100).find((e) => e.id === str(r, 'id')) ?? null;
+}
+
+/** What Atlas changed on a local day, newest first, for the panel's "changed today" list. */
+export function listAtlasChanges(ctx: Ctx, day: LocalDate): LogEntry[] {
+  const from = localToIso(day, '00:00');
+  const to = localToIso(addDays(day, 1), '00:00');
+  return all(
+    ctx,
+    `SELECT * FROM action_log WHERE actor = 'atlas' AND created_at >= ? AND created_at < ?
+     ORDER BY created_at DESC, id DESC`,
+    from,
+    to,
+  ).map(toLogEntry);
 }

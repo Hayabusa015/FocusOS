@@ -12,7 +12,7 @@ import type {
 } from '@shared/core';
 import { parseCapture } from '../domain/capture';
 import { createArea, listAreas, seedAreas, updateArea } from './areas';
-import { createCtx, latestUndoable, listLog, undoEntry } from './context';
+import { createCtx, latestUndoable, listAtlasChanges, listLog, undoEntry } from './context';
 import {
   activeFocus,
   finishFocus,
@@ -21,6 +21,7 @@ import {
   logWin,
   settle,
   startFocus,
+  startFocusAsAtlas,
   takeAward,
 } from './ledger';
 import {
@@ -51,11 +52,13 @@ import {
   listDueOn,
   listSubtasks,
   listTasks,
+  queryTasks,
   reopenTask,
   reorderTasks,
   rescheduleTask,
   updateTask,
 } from './tasks';
+import type { TaskQuery } from './tasks';
 import { getToday, getUpcoming, search } from './views';
 import type { DayWindow } from './views';
 
@@ -149,6 +152,26 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
     briefing: () => briefingView(ctx),
     shutdown: () => shutdownView(ctx),
     completeShutdown: () => completeShutdown(ctx),
+
+    /**
+     * The same changes, made by Atlas: logged under actor 'atlas' so the panel can list them and
+     * offer Undo on each. Atlas can archive a task but never hard-delete (PLAN §7.3).
+     */
+    atlas: {
+      createTask: (input: TaskCreate, source: Task['source'] = 'atlas') =>
+        createTask(ctx, input, 'atlas', source),
+      updateTask: (patch: TaskUpdate) => updateTask(ctx, patch, 'atlas'),
+      completeTask: (id: string) => completeTask(ctx, id, 'atlas'),
+      reopenTask: (id: string) => reopenTask(ctx, id, 'atlas'),
+      archiveTask: (id: string) => deleteTask(ctx, id, 'atlas'),
+      rescheduleTask: (id: string, dueDate: LocalDate) => rescheduleTask(ctx, id, dueDate, 'atlas'),
+      markMaintenanceDone: (id: string, date?: LocalDate, note?: string) =>
+        markMaintenanceDone(ctx, id, date, note, 'atlas'),
+      startFocus: (input: { taskId?: string | null; plannedMinutes: number }) =>
+        startFocusAsAtlas(ctx, input),
+    },
+    queryTasks: (q: TaskQuery) => queryTasks(ctx, q),
+    listAtlasChanges: (day?: LocalDate) => listAtlasChanges(ctx, day ?? ctx.today()),
 
     // Undo
     undo: (id: string) => undoEntry(ctx, id),

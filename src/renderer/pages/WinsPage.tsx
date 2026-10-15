@@ -23,10 +23,10 @@ export function LevelBar({ summary }: { summary: GamificationSummary }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(summary.progress * 100)}
-        className="h-2.5 overflow-hidden rounded-full bg-raised"
+        className="h-2.5 rounded-full bg-raised"
       >
         <div
-          className="h-full rounded-full bg-accent"
+          className="glow-gold glow-breathe h-full rounded-full bg-accent"
           style={{ width: `${Math.max(2, summary.progress * 100)}%` }}
         />
       </div>
@@ -38,7 +38,10 @@ export function LevelBar({ summary }: { summary: GamificationSummary }) {
 export function StreakDots({ summary }: { summary: GamificationSummary }) {
   return (
     <div className="flex items-center gap-3">
-      <span data-testid="streak" className="text-2xl font-semibold tracking-tight">
+      <span
+        data-testid="streak"
+        className="font-display whitespace-nowrap text-3xl font-bold tracking-tight"
+      >
         {summary.streak.active} / {summary.streak.of}
       </span>
       <span className="flex gap-1.5" aria-hidden>
@@ -67,7 +70,7 @@ export function WinsPage() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Wins</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Wins</h1>
         <p className="mt-1 text-ink-muted">Everything you have gotten done, counted.</p>
       </header>
       <ErrorNote message={error ?? actionError} />
@@ -162,7 +165,7 @@ export function WinsPage() {
           <div className="space-y-3">
             {data.recent.map((day) => (
               <div key={day.date}>
-                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <h3 className="mb-1 text-xs font-semibold text-ink-muted">
                   {friendlyDate(day.date)}
                 </h3>
                 <ul className="space-y-0.5 text-sm">
@@ -186,32 +189,32 @@ export function WinsPage() {
           Achievements
         </SectionTitle>
         {achievements.length === 0 && <Empty title="No achievements yet" />}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-x-8 sm:grid-cols-2">
           {achievements.map((a) => (
-            <div
+            <li
               key={a.key}
               data-testid={`achievement-${a.key}`}
               data-unlocked={a.unlockedAt !== null}
-              className={`rounded-card border p-4 ${a.unlockedAt ? 'border-accent bg-surface' : 'border-line bg-surface opacity-60'}`}
+              className={`flex gap-3 border-t border-line py-3 ${a.unlockedAt ? '' : 'opacity-55'}`}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className={`grid size-6 place-items-center rounded-full text-xs ${a.unlockedAt ? 'bg-accent text-accent-ink' : 'bg-line text-ink-muted'}`}
-                >
-                  {a.unlockedAt ? '✓' : '·'}
-                </span>
-                <span className="font-medium">{a.title}</span>
+              <span
+                aria-hidden
+                className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs ${a.unlockedAt ? 'bg-accent text-accent-ink' : 'bg-line text-ink-muted'}`}
+              >
+                {a.unlockedAt ? '✓' : '·'}
+              </span>
+              <div>
+                <p className="font-medium">{a.title}</p>
+                <p className="text-sm text-ink-muted">{a.description}</p>
+                {a.unlockedAt && (
+                  <p className="mt-0.5 text-xs text-accent-soft">
+                    Unlocked {friendlyDate(isoToLocalDate(a.unlockedAt))}
+                  </p>
+                )}
               </div>
-              <p className="mt-1 text-sm text-ink-muted">{a.description}</p>
-              {a.unlockedAt && (
-                <p className="mt-1 text-xs text-ink-muted">
-                  Unlocked {friendlyDate(isoToLocalDate(a.unlockedAt))}
-                </p>
-              )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     </div>
   );

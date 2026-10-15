@@ -1,5 +1,6 @@
 import type { Area, Task } from '@shared/core';
 import { friendlyDate, friendlyTime } from '@/lib/dates';
+import { areaColor } from '@/lib/areas';
 import { AreaTag, Check } from './ui';
 
 interface Props {
@@ -29,7 +30,8 @@ export function TaskRow({
     : null;
   return (
     <li
-      className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-raised focus-within:bg-raised"
+      className="group flex items-center gap-3 rounded-md border-l-[3px] py-2 pl-3 pr-2 hover:bg-raised focus-within:bg-raised"
+      style={{ borderLeftColor: area ? areaColor(area) : 'transparent' }}
       data-testid="task-row"
       onKeyDown={onKeyDown}
     >

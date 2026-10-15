@@ -16,23 +16,29 @@
   --color-brand-gold: #febb26;
   --color-brand-violet: #7e47ff;
 
-  /* Ground and surfaces: a light day-grey page with lighter cards */
-  --color-ground: #e5e6ea;
-  --color-surface: #f4f5f7;
-  --color-raised: #eceef1;
-  --color-line: #d0d2da;
+  /* Ground and surfaces: a near-black page with slightly lifted sheets */
+  --color-ground: #0e0f12;
+  --color-surface: #16181d;
+  --color-raised: #20232a;
+  --color-line: #2b2e37;
+
+  /* The side rail: the logo's near-black, so the brand frames the app instead of decorating it */
+  --color-rail: #0a0b0d;
+  --color-rail-raised: #1a1c22;
+  --color-rail-ink: #eceef3;
+  --color-rail-muted: #8c91a0;
 
   /* Text */
-  --color-ink: #17181d;
-  --color-ink-muted: #5b5f6d;
+  --color-ink: #eceef3;
+  --color-ink-muted: #9a9fae;
 
   /* Brand and states. Gold fills (dark text on it); violet is the accent for text and marks. */
   --color-accent: #febb26;
   --color-accent-ink: #15161a;
-  --color-accent-soft: #6a3ae0;
-  --color-win: #12946a;
-  --color-caution: #a35f08;
-  --color-alert: #d1364a;
+  --color-accent-soft: #a58bff;
+  --color-win: #3fd49a;
+  --color-caution: #f0a640;
+  --color-alert: #ff6b7d;
 
   /* One accent per area; areas store the token name, never a hex (PLAN §6) */
   --color-area-chemistry: #5ec8ff;
@@ -45,7 +51,17 @@
 
   --font-sans:
     'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --radius-card: 0.9rem;
+  /* Headings and big numbers use a grotesque with some wit in it; the rest stays plain and legible. */
+  --font-display:
+    'Bricolage Grotesque Variable', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --radius-card: 0.5rem;
+
+  /* One easing for the whole app: quick to start, a soft landing. Never linear, never default. */
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The bounce: overshoots a little and settles. Used for things that move with intent. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-duration: 220ms;
 }
 
 @layer base {
@@ -59,7 +75,25 @@
     margin: 0;
   }
   html {
-    color-scheme: light;
+    color-scheme: dark;
+  }
+  /* The rail keeps its own thin, dark scrollbar so the light one does not cut into it. */
+  nav[aria-label='Main'] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rail-raised) transparent;
+  }
+  h1,
+  h2,
+  .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+  h1 {
+    letter-spacing: -0.025em;
+  }
+  /* Numbers line up in columns everywhere. */
+  body {
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     outline: 2px solid var(--color-accent);

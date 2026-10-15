@@ -8,6 +8,7 @@ import {
   Menu,
   nativeImage,
   Notification,
+  safeStorage,
   session,
   Tray,
 } from 'electron';
@@ -27,6 +28,10 @@ import { SettingsStore } from './db/settings';
 import { createCaptureWindow } from './capture-window';
 import { createNotifier } from './notifier';
 import { registerCoreIpc } from './ipc/core';
+import { registerAtlasIpc } from './ipc/atlas';
+import { createAtlas } from './atlas';
+import { createFakeAtlasClient } from './atlas/fake-api';
+import { createFileSecretStore, createMemorySecretStore } from './atlas/secrets';
 import { UpdaterController } from './domain/updater-controller';
 import { buildCsp } from '@shared/csp';
 import { registerIpc } from './ipc';
@@ -34,7 +39,7 @@ import { makeTrustCheck } from './ipc/trust';
 import { createLogger } from './log';
 import { createElectronUpdaterBackend } from './updater';
 import { createFakeUpdaterBackend } from './updater-fake';
-import { testHooksEnabled, updaterMode } from './test-hooks';
+import { atlasFake, testHooksEnabled, updaterMode } from './test-hooks';
 
 const APP_ID = 'org.shull.cortex';
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'];
@@ -250,6 +255,25 @@ if (!app.requestSingleInstanceLock()) {
         return { dayStart: s.dayStart, dayEnd: s.dayEnd };
       },
       hideCapture: () => capture?.hide(),
+    });
+
+    // Atlas (Phase 3). The key is encrypted by the OS and lives in its own file. Without a key
+    // nothing here runs, and the rest of the app does not notice.
+    const fakeAtlas = atlasFake(app.isPackaged, process.env);
+    const atlas = createAtlas({
+      store: coreStore,
+      secrets: fakeAtlas
+        ? createMemorySecretStore()
+        : createFileSecretStore(join(dataDir, 'atlas-key.json'), safeStorage),
+      settings: currentSettings,
+      ...(fakeAtlas ? { createClient: createFakeAtlasClient } : {}),
+    });
+    registerAtlasIpc({
+      atlas,
+      store: coreStore,
+      isTrustedSender,
+      notifyChanged: (change) => broadcast(EVENTS.dataChanged, change),
+      sendChunk: (text) => broadcast(EVENTS.atlasChunk, text),
     });
 
     const notifier = createNotifier({

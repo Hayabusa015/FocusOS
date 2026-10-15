@@ -137,9 +137,7 @@ export function FocusScreen({
       data-testid="focus-screen"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ground px-6 text-center"
     >
-      <p className="text-sm uppercase tracking-widest text-ink-muted">
-        {over ? 'Time is up' : 'Focus'}
-      </p>
+      <p className="text-sm text-ink-muted">{over ? 'Time is up' : 'Focus'}</p>
       <h1 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight">
         {session.taskTitle ?? 'Whatever you chose'}
       </h1>

@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AtlasPanel } from '@/components/atlas/AtlasPanel';
+import { BrainDumpDialog } from '@/components/atlas/BrainDumpDialog';
+import { PlanDialog } from '@/components/atlas/PlanDialog';
 import { Celebration } from '@/components/Celebration';
 import { FocusScreen, FocusStart } from '@/components/Focus';
 import { JustUpdatedCard } from '@/components/JustUpdatedCard';
 import { MorningBriefing } from '@/components/MorningBriefing';
 import { ShutdownRitual } from '@/components/ShutdownRitual';
 import { SearchDialog } from '@/components/SearchDialog';
+import { SideNav } from '@/components/SideNav';
 import { TaskEditor } from '@/components/TaskEditor';
 import { UndoToast } from '@/components/UndoToast';
 import { UpdateBanner } from '@/components/UpdateBanner';
-import logoMark from '@/assets/logo-mark.png';
-import { Ring } from '@/components/ui';
 import { useAreas } from '@/hooks/useAreas';
 import { useLive } from '@/hooks/useLive';
 import { useUpdaterState } from '@/hooks/useUpdaterState';
-import { areaColor } from '@/lib/areas';
 import { AreaPage } from '@/pages/AreaPage';
 import { InboxPage } from '@/pages/InboxPage';
 import { MaintenancePage } from '@/pages/MaintenancePage';
@@ -25,11 +26,6 @@ import { UpcomingPage } from '@/pages/UpcomingPage';
 import type { FocusSession } from '@shared/core';
 import type { PageProps, Route } from '@/pages/types';
 import { SettingsPage } from './SettingsPage';
-
-const NAV_ITEM =
-  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors';
-const navClass = (active: boolean) =>
-  `${NAV_ITEM} ${active ? 'bg-raised font-medium text-ink' : 'text-ink-muted hover:bg-raised hover:text-ink'}`;
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -44,6 +40,8 @@ export function App() {
     null,
   );
   const [searching, setSearching] = useState(false);
+  const [atlasOpen, setAtlasOpen] = useState(false);
+  const [atlasDialog, setAtlasDialog] = useState<'dump' | 'plan' | null>(null);
   const [overlay, setOverlay] = useState<'briefing' | 'shutdown' | null>(null);
   const [focusStart, setFocusStart] = useState<{
     taskId: string | null;
@@ -77,6 +75,9 @@ export function App() {
       if (key === 'k') {
         event.preventDefault();
         setSearching(true);
+      } else if (key === 'j') {
+        event.preventDefault();
+        setAtlasOpen((open) => !open);
       } else if (key === 'n' && !isTyping(event.target)) {
         event.preventDefault();
         setEditor({ taskId: null, areaId: null });
@@ -103,157 +104,26 @@ export function App() {
 
   return (
     <div className="flex h-full">
-      <nav
-        aria-label="Main"
-        className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface p-4"
-      >
-        <div className="mb-6 flex items-center gap-3 px-2 text-xl font-semibold tracking-tight">
-          <img src={logoMark} alt="" width={32} height={32} className="size-8" />
-          Cortex
-        </div>
-
-        <div className="mb-4 space-y-1">
-          <button className={navClass(false)} onClick={() => setSearching(true)}>
-            <span>Search</span>
-            <kbd className="ml-auto text-xs text-ink-muted">Ctrl K</kbd>
-          </button>
-          <button
-            className={navClass(false)}
-            onClick={() => setEditor({ taskId: null, areaId: null })}
-          >
-            <span>Add task</span>
-            <kbd className="ml-auto text-xs text-ink-muted">Ctrl N</kbd>
-          </button>
-        </div>
-
-        <ul className="space-y-1">
-          <li>
-            <button
-              className={navClass(route.page === 'dashboard')}
-              aria-current={route.page === 'dashboard' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'dashboard' })}
-            >
-              Dashboard
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'today')}
-              aria-current={route.page === 'today' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'today' })}
-            >
-              Today
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'inbox')}
-              aria-current={route.page === 'inbox' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'inbox' })}
-            >
-              Inbox
-              {inboxCount > 0 && (
-                <span
-                  data-testid="inbox-count"
-                  className="ml-auto rounded-full bg-raised px-2 text-xs text-ink"
-                >
-                  {inboxCount}
-                </span>
-              )}
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'upcoming')}
-              aria-current={route.page === 'upcoming' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'upcoming' })}
-            >
-              Upcoming
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'someday')}
-              aria-current={route.page === 'someday' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'someday' })}
-            >
-              Someday
-            </button>
-          </li>
-        </ul>
-
-        <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          Areas
-        </p>
-        <ul className="space-y-1">
-          {areas.map((area) => {
-            const active = route.page === 'area' && route.areaId === area.id;
-            return (
-              <li key={area.id}>
-                <button
-                  className={navClass(active)}
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => setRoute({ page: 'area', areaId: area.id })}
-                >
-                  <Ring
-                    done={area.doneThisWeek}
-                    total={area.doneThisWeek + area.openCount}
-                    color={areaColor(area)}
-                  />
-                  {area.name}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        <ul className="mt-6 space-y-1">
-          <li>
-            <button
-              className={navClass(route.page === 'wins')}
-              aria-current={route.page === 'wins' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'wins' })}
-            >
-              Wins
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'maintenance')}
-              aria-current={route.page === 'maintenance' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'maintenance' })}
-            >
-              Home maintenance
-            </button>
-          </li>
-          <li>
-            <button
-              className={navClass(route.page === 'settings')}
-              aria-current={route.page === 'settings' ? 'page' : undefined}
-              onClick={() => setRoute({ page: 'settings' })}
-            >
-              Settings
-            </button>
-          </li>
-        </ul>
-        <div className="mt-6 space-y-1 border-t border-line pt-4">
-          <button className={navClass(false)} onClick={() => setOverlay('briefing')}>
-            Morning briefing
-          </button>
-          <button className={navClass(false)} onClick={() => pageProps.focus(null)}>
-            Focus session
-          </button>
-          <button className={navClass(false)} onClick={() => setOverlay('shutdown')}>
-            Shutdown
-          </button>
-        </div>
-        <p data-testid="sidebar-version" className="mt-auto px-3 pt-4 text-xs text-ink-muted">
-          {version ? `Version ${version}` : ''}
-        </p>
-      </nav>
+      <SideNav
+        route={route}
+        areas={areas}
+        inboxCount={inboxCount}
+        version={version}
+        atlasOpen={atlasOpen}
+        go={setRoute}
+        onSearch={() => setSearching(true)}
+        onToggleAtlas={() => setAtlasOpen((open) => !open)}
+        onAddTask={() => setEditor({ taskId: null, areaId: null })}
+        onBriefing={() => setOverlay('briefing')}
+        onFocus={() => pageProps.focus(null)}
+        onShutdown={() => setOverlay('shutdown')}
+      />
 
       <main className="min-w-0 flex-1 overflow-y-auto p-10">
-        <div className="mx-auto max-w-4xl">
+        <div
+          key={route.page + (route.page === 'area' ? route.areaId : '')}
+          className="rise mx-auto max-w-4xl"
+        >
           {updater?.justUpdated && <JustUpdatedCard updated={updater.justUpdated} />}
           {updater && <UpdateBanner state={updater} />}
           {route.page === 'dashboard' && <DashboardPage {...pageProps} />}
@@ -268,6 +138,26 @@ export function App() {
         </div>
       </main>
 
+      {atlasOpen && (
+        <AtlasPanel
+          onClose={() => setAtlasOpen(false)}
+          onSettings={() => setRoute({ page: 'settings' })}
+          onBrainDump={() => setAtlasDialog('dump')}
+          onPlan={() => setAtlasDialog('plan')}
+        />
+      )}
+      {!atlasOpen && (
+        <button
+          onClick={() => setAtlasOpen(true)}
+          className="fixed bottom-6 right-6 z-30 rounded-full border border-brand-violet bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-lg transition-colors hover:bg-raised"
+        >
+          Ask Atlas
+        </button>
+      )}
+      {atlasDialog === 'dump' && (
+        <BrainDumpDialog areas={areas} onClose={() => setAtlasDialog(null)} />
+      )}
+      {atlasDialog === 'plan' && <PlanDialog onClose={() => setAtlasDialog(null)} />}
       {editor && (
         <TaskEditor
           taskId={editor.taskId}

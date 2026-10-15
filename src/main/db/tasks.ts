@@ -544,3 +544,53 @@ export function searchTasks(ctx: Ctx, query: string, limit = 30): Task[] {
     limit,
   ).map(toTask);
 }
+
+export interface TaskQuery {
+  areaId?: string | null;
+  status?: Task['status'];
+  /** Inclusive due-date range. */
+  dueFrom?: LocalDate;
+  dueTo?: LocalDate;
+  text?: string;
+  /** Finished tasks are left out unless asked for. */
+  includeDone?: boolean;
+  limit?: number;
+}
+
+/** A filtered read for Atlas. Main tasks only (steps come with their parent). */
+export function queryTasks(ctx: Ctx, q: TaskQuery): Task[] {
+  const where: string[] = ['t.deleted_at IS NULL', 't.parent_id IS NULL'];
+  const params: (string | number | null)[] = [];
+  if (q.areaId !== undefined) {
+    if (q.areaId === null) where.push('t.area_id IS NULL');
+    else {
+      where.push('t.area_id = ?');
+      params.push(q.areaId);
+    }
+  }
+  if (q.status) {
+    where.push('t.status = ?');
+    params.push(q.status);
+  } else if (!q.includeDone) where.push("t.status <> 'done'");
+  if (q.dueFrom) {
+    where.push('t.due_date >= ?');
+    params.push(q.dueFrom);
+  }
+  if (q.dueTo) {
+    where.push('t.due_date <= ?');
+    params.push(q.dueTo);
+  }
+  const text = q.text?.trim();
+  if (text) {
+    const like = `%${escapeLike(text)}%`;
+    where.push("(t.title LIKE ? ESCAPE '\\' OR t.notes LIKE ? ESCAPE '\\')");
+    params.push(like, like);
+  }
+  params.push(Math.min(Math.max(q.limit ?? 40, 1), 100));
+  return all(
+    ctx,
+    `${SELECT} WHERE ${where.join(' AND ')}
+     ORDER BY t.due_date IS NULL, t.due_date, t.sort_order, t.created_at, t.id LIMIT ?`,
+    ...params,
+  ).map(toTask);
+}

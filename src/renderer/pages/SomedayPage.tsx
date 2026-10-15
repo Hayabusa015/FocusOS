@@ -14,7 +14,7 @@ export function SomedayPage({ areas, openTask }: PageProps) {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Someday</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Someday</h1>
         <p className="mt-1 text-ink-muted">Parked for later. Nothing here is waiting on you.</p>
       </header>
       <ErrorNote message={error ?? actionError} />

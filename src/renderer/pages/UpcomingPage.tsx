@@ -23,7 +23,7 @@ export function UpcomingPage({ areas, openTask, go }: PageProps) {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Upcoming</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Upcoming</h1>
         <p className="mt-1 text-ink-muted">The next two weeks, with home maintenance coming due.</p>
       </header>
       <ErrorNote message={error ?? actionError} />

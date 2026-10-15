@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppInfo, UpdaterState } from '@shared/schemas';
+import { AtlasSettings } from '@/components/atlas/AtlasSettings';
 import { CoreSettings } from '@/components/CoreSettings';
 import { formatWhen } from '@/lib/format';
 
@@ -35,7 +36,7 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-semibold tracking-tight">Settings</h1>
+      <h1 className="mb-8 text-4xl font-bold tracking-tight">Settings</h1>
 
       <section
         aria-labelledby="updates-heading"
@@ -75,6 +76,8 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
       </section>
 
       <CoreSettings />
+
+      <AtlasSettings />
 
       <section
         aria-labelledby="about-heading"

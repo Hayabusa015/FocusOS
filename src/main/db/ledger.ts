@@ -177,12 +177,14 @@ export function settle(ctx: Ctx): void {
 
   // Focus: one point for each five minutes of a completed session.
   const focusHave = sums(ctx, 'focus');
+  const focusSeen = new Set<string>();
   for (const f of all(
     ctx,
     `SELECT id, area_id, planned_minutes, started_at, ended_at FROM focus_sessions
      WHERE completed = 1 AND ended_at IS NOT NULL`,
   )) {
     const id = str(f, 'id');
+    focusSeen.add(id);
     const points = focusXp(
       focusMinutes(str(f, 'started_at'), str(f, 'ended_at'), int(f, 'planned_minutes')),
     );
@@ -191,6 +193,13 @@ export function settle(ctx: Ctx): void {
       addEvent(ctx, 'focus', id, diff, strOrNull(f, 'area_id'), str(f, 'ended_at'));
       delta += diff;
     }
+  }
+
+  // A session that no longer exists (its start was undone) takes its points with it.
+  for (const [id, have] of focusHave) {
+    if (focusSeen.has(id) || have === 0) continue;
+    addEvent(ctx, 'focus', id, -have, null, stamp);
+    delta -= have;
   }
 
   // Inbox emptied: 10, once a day, when the last item leaves it. A later capture does not take it
@@ -541,6 +550,23 @@ export function activeFocus(ctx: Ctx): FocusSession | null {
     return null;
   }
   return toFocus(ctx, r);
+}
+
+/** Atlas starting a session: logged, so it shows in "changed today" and Undo ends it. */
+export function startFocusAsAtlas(
+  ctx: Ctx,
+  input: { taskId?: string | null; plannedMinutes: number },
+): Mutation<FocusSession> {
+  return mutate(ctx, 'atlas', 'focus.start', (tx) => {
+    const session = startFocus(ctx, input);
+    tx.created('focus_sessions', session.id);
+    return {
+      result: session,
+      summary: session.taskTitle
+        ? `Started a ${input.plannedMinutes} minute focus session on "${session.taskTitle}"`
+        : `Started a ${input.plannedMinutes} minute focus session`,
+    };
+  });
 }
 
 export function startFocus(

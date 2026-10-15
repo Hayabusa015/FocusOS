@@ -110,6 +110,7 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
         'accomplishments',
         'app',
         'areas',
+        'atlas',
         'capture',
         'focus',
         'maintenance',

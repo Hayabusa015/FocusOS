@@ -1,18 +1,19 @@
 import { useCallback, useState } from 'react';
-import { Card, ErrorNote, SectionTitle, buttonQuiet, AreaDot } from '@/components/ui';
+import { Schedule } from '@/components/Schedule';
+import { PlanDialog } from '@/components/atlas/PlanDialog';
+import { Card, ErrorNote, SectionTitle, buttonQuiet } from '@/components/ui';
 import { DailyList } from '@/components/DailyList';
 import { TaskList } from '@/components/TaskList';
 import { useLive, errorMessage } from '@/hooks/useLive';
-import { indexAreas } from '@/lib/areas';
-import { minutesText, timeOfIso } from '@/lib/dates';
-import { greeting } from '@/lib/format';
+import { minutesText } from '@/lib/dates';
+import { dryLine, greeting } from '@/lib/format';
 import type { PageProps } from './types';
 
 export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
   const load = useCallback(() => window.cortex.today.get(), []);
   const { data: today, error } = useLive(load, 30_000);
   const [actionError, setActionError] = useState<string | null>(null);
-  const byId = indexAreas(areas);
+  const [planning, setPlanning] = useState(false);
   const now = new Date();
 
   const run = (action: () => Promise<unknown>) => {
@@ -26,13 +27,29 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
     <div>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{greeting(now)}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{greeting(now)}</h1>
           <p className="mt-1 text-ink-muted">{dateText}</p>
+          {today && (
+            <p data-testid="dry-line" className="mt-3 max-w-xl text-base text-pretty">
+              {dryLine({
+                phase: today.arc.phase,
+                dueToday: today.dueToday.map((t) => ({ title: t.title, size: t.size })),
+                doneToday: today.counters.tasksDone,
+                carriedForward: today.carryForward.length,
+              })}
+            </p>
+          )}
         </div>
-        <button className={buttonQuiet} onClick={() => newTask()}>
-          Add task
-        </button>
+        <span className="flex gap-2">
+          <button className={buttonQuiet} onClick={() => setPlanning(true)}>
+            Plan the rest of today
+          </button>
+          <button className={buttonQuiet} onClick={() => newTask()}>
+            Add task
+          </button>
+        </span>
       </header>
+      {planning && <PlanDialog onClose={() => setPlanning(false)} />}
       <ErrorNote message={error ?? actionError} />
 
       {today && (
@@ -40,9 +57,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
           <Card label="Now and next" className="mb-4">
             {today.nowBlock ? (
               <p data-testid="now-bar">
-                <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
-                  Now
-                </span>
+                <span className="text-xs font-semibold text-accent-soft">Now</span>
                 <span className="ml-3 text-lg font-medium">{today.nowBlock.title}</span>
                 <span className="ml-3 text-sm text-ink-muted">
                   {minutesText(today.nowBlock.minutesLeft)} left
@@ -55,7 +70,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
             )}
             {today.nextBlock && (
               <p className="mt-2 text-sm text-ink-muted" data-testid="next-bar">
-                <span className="text-xs font-semibold uppercase tracking-wide">Next</span>
+                <span className="text-xs font-semibold">Next</span>
                 <span className="ml-3 text-ink">{today.nextBlock.title}</span>
                 <span className="ml-3">in {minutesText(today.nextBlock.startsInMinutes)}</span>
               </p>
@@ -69,10 +84,10 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(today.arc.fraction * 100)}
-              className="h-2 overflow-hidden rounded-full bg-raised"
+              className="h-2 rounded-full bg-raised"
             >
               <div
-                className="h-full rounded-full bg-brand-violet"
+                className="glow-violet h-full rounded-full bg-brand-violet"
                 style={{ width: `${today.arc.fraction * 100}%` }}
               />
             </div>
@@ -95,26 +110,8 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
 
           {today.blocks.length > 0 && (
             <section aria-label="Timeline" className="mb-6">
-              <SectionTitle>Timeline</SectionTitle>
-              <ol className="space-y-1">
-                {today.blocks.map((b) => (
-                  <li
-                    key={b.taskId}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-raised"
-                  >
-                    <span className="w-28 shrink-0 text-xs tabular-nums text-ink-muted">
-                      {timeOfIso(b.start)} – {timeOfIso(b.end)}
-                    </span>
-                    <AreaDot area={b.areaId ? byId.get(b.areaId) : null} />
-                    <button
-                      className={`min-w-0 flex-1 truncate text-left text-sm ${b.status === 'done' ? 'text-ink-muted line-through' : ''}`}
-                      onClick={() => openTask(b.taskId)}
-                    >
-                      {b.title}
-                    </button>
-                  </li>
-                ))}
-              </ol>
+              <SectionTitle>Schedule</SectionTitle>
+              <Schedule today={today} areas={areas} openTask={openTask} />
             </section>
           )}
 

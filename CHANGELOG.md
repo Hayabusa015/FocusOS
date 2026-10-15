@@ -3,6 +3,57 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.3.1] - 2026-10-14
+
+A dark look, and a day you can read at a glance. Nothing works differently.
+
+- **Dark theme.** A near-black page with your gold and violet, a darker side rail, and a gold bar
+  marking the page you are on. (The light day-grey look is gone for now.)
+- **Today at a glance** on the Dashboard: a half-circle gauge for your day window (the time, and how
+  long is left), and your tasks, blocks, inbox and XP each with a row of small bars.
+- **A real schedule.** Your time blocks in order, tinted with their area's colour, the block you are
+  in outlined, and a line with the time showing where now falls. On the Dashboard and on Today.
+- **A nav that moves.** A gold highlight springs between pages with a small bounce, items nudge
+  right and glow when you point at them, the items slide in when the app opens, and each class has
+  a slim bar in its colour (filled to the week's progress) instead of a ring.
+- **A lit fill.** Progress bars (level, your day, the segmented bars) and the day gauge glow in the colour they are filled with.
+- **A voice.** Headings and big numbers use Bricolage Grotesque (bundled, works offline). Labels
+  are in plain sentence case, pages ease in, sheets are a plate in a tray with a violet-tinted
+  shadow, and a faint grain keeps flat colour from looking flat.
+- **A dry line about your day** on the Dashboard and Today ("6 left today. Grade lab reports is the
+  big one."), worked out from your lists, so it costs nothing and needs no key.
+- **Plan the rest of today** is a violet button on the Dashboard, and an **Ask Atlas** button floats
+  at the bottom right.
+- **Area colour where it means something:** every task has a coloured edge for its area, and so does
+  each area on the Dashboard.
+- Fewer boxes (sections sit on the page, divided by thin rules), achievements as a plain list,
+  sharper corners, flat buttons, and bolder titles.
+
+## [0.3.0] - 2026-10-14
+
+Atlas can talk, and do things you ask, once you give it an API key. Nothing in Cortex needs it.
+
+- **The Atlas panel** (sidebar, or Ctrl J): chat with streaming replies. "Add grade lab reports to
+  Chemistry for Friday" adds the task; "I finished it" completes the one you were talking about.
+  Atlas can list, add, change, finish and move tasks, put a task on the timeline, start a focus
+  session, log home maintenance, and tell you how the day and your progress look. It can archive a
+  task (Undo brings it back) but never delete anything for good, send email or change settings.
+- **Every Atlas change can be undone.** A toast says what it did ("Atlas: Added …") with Undo, and
+  the panel lists everything Atlas changed today, each with its own Undo.
+- **Sort with Atlas** (Inbox): proposes an area, a date and a size for every inbox item. You can
+  edit or untick anything; nothing changes until you press Apply, and Undo all reverses it.
+- **Plan the rest of today** (Today and the panel): proposes time blocks for what is left. It never
+  plans past the end of your day, never over something already scheduled, and always leaves at
+  least 20% of the free time open. You accept all, some or none.
+- **Brain dump** (Inbox and the panel): ramble, and Atlas turns it into a checklist of tasks. It
+  is pre-ticked and editable; nothing is saved until you press Add. Things that are not tasks are
+  shown, not saved.
+- **Settings → Atlas:** your API key (encrypted by Windows, in its own file, never shown again),
+  the model and effort for each job (defaults: Opus 5.5), a monthly spending cap, and what you have
+  spent today, this week and this month.
+- With no key, Atlas says so in plain words and the rest of Cortex works exactly as before. A
+  rate limit, a rejected key or no connection shows a clear message and nothing else changes.
+
 ## [0.2.0] - 2026-10-14
 
 Getting things done now counts, and the day has a beginning and an end.
