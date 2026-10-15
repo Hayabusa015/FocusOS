@@ -23,10 +23,10 @@ export function LevelBar({ summary }: { summary: GamificationSummary }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(summary.progress * 100)}
-        className="h-2.5 overflow-hidden rounded-full bg-raised"
+        className="h-2.5 rounded-full bg-raised"
       >
         <div
-          className="h-full rounded-full bg-accent"
+          className="glow-gold glow-breathe h-full rounded-full bg-accent"
           style={{ width: `${Math.max(2, summary.progress * 100)}%` }}
         />
       </div>

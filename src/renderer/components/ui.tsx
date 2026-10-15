@@ -210,12 +210,15 @@ export function Segments({
   done,
   total,
   fill = 'bg-brand-violet',
+  glow = 'glow-violet',
   max = 10,
 }: {
   done: number;
   total: number;
   /** A Tailwind background class for the filled bars. */
   fill?: string;
+  /** The matching glow class (glow-violet, glow-gold, glow-blue). */
+  glow?: string;
   max?: number;
 }) {
   const bars = Math.min(Math.max(total, 1), max);
@@ -223,7 +226,10 @@ export function Segments({
   return (
     <span className="flex gap-1" aria-hidden>
       {Array.from({ length: bars }, (_, i) => (
-        <span key={i} className={`h-1.5 flex-1 rounded-full ${i < filled ? fill : 'bg-raised'}`} />
+        <span
+          key={i}
+          className={`h-1.5 flex-1 rounded-full ${i < filled ? `${fill} ${glow}` : 'bg-raised'}`}
+        />
       ))}
     </span>
   );

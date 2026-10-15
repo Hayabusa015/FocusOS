@@ -135,6 +135,7 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                       done={today.counters.blocksDone}
                       total={today.counters.blocksTotal}
                       fill="bg-area-chemistry"
+                      glow="glow-blue"
                     />
                   }
                   note={
@@ -162,6 +163,7 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                       done={Math.min(today.counters.winsToday, 3)}
                       total={3}
                       fill="bg-accent"
+                      glow="glow-gold"
                     />
                   }
                   note={`${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'} (3 make an active day)`}

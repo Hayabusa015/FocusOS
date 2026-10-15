@@ -265,3 +265,43 @@
     }
   }
 }
+
+@layer components {
+  /* --- Glow: a lit fill. The bar looks like it is giving off the colour it is filled with. ------ */
+  .glow-gold {
+    box-shadow:
+      0 0 6px 0 color-mix(in srgb, var(--color-accent) 80%, transparent),
+      0 0 18px 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  .glow-violet {
+    box-shadow:
+      0 0 6px 0 color-mix(in srgb, var(--color-brand-violet) 85%, transparent),
+      0 0 18px 2px color-mix(in srgb, var(--color-brand-violet) 50%, transparent);
+  }
+  .glow-blue {
+    box-shadow:
+      0 0 6px 0 color-mix(in srgb, var(--color-area-chemistry) 80%, transparent),
+      0 0 16px 2px color-mix(in srgb, var(--color-area-chemistry) 40%, transparent);
+  }
+  .glow-arc {
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-brand-violet) 90%, transparent))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--color-brand-violet) 55%, transparent));
+  }
+  .glow-dot {
+    filter: drop-shadow(0 0 5px var(--color-accent)) drop-shadow(0 0 12px var(--color-accent));
+  }
+  /* A slow breath on the leading edge of a fill that is still growing. */
+  @keyframes glow-breathe {
+    50% {
+      filter: brightness(1.25);
+    }
+  }
+  .glow-breathe {
+    animation: glow-breathe 3.2s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .glow-breathe {
+      animation: none;
+    }
+  }
+}

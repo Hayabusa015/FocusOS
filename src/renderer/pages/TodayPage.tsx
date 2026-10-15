@@ -76,10 +76,10 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(today.arc.fraction * 100)}
-              className="h-2 overflow-hidden rounded-full bg-raised"
+              className="h-2 rounded-full bg-raised"
             >
               <div
-                className="h-full rounded-full bg-brand-violet"
+                className="glow-violet h-full rounded-full bg-brand-violet"
                 style={{ width: `${today.arc.fraction * 100}%` }}
               />
             </div>

@@ -42,7 +42,7 @@ export function DayGauge({ today }: { today: TodayView }) {
             fill="none"
             strokeWidth="9"
             strokeLinecap="round"
-            className="stroke-brand-violet"
+            className="glow-arc stroke-brand-violet"
           />
         )}
         {today.arc.phase === 'during' && (
@@ -50,7 +50,7 @@ export function DayGauge({ today }: { today: TodayView }) {
             cx={end.x}
             cy={end.y}
             r="6"
-            className="fill-accent stroke-surface"
+            className="glow-dot fill-accent stroke-surface"
             strokeWidth="3"
           />
         )}

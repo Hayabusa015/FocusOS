@@ -13,6 +13,7 @@ A dark look, and a day you can read at a glance. Nothing works differently.
   long is left), and your tasks, blocks, inbox and XP each with a row of small bars.
 - **A real schedule.** Your time blocks in order, tinted with their area's colour, the block you are
   in outlined, and a line with the time showing where now falls. On the Dashboard and on Today.
+- **A lit fill.** Progress bars (level, your day, the segmented bars) and the day gauge glow in the colour they are filled with.
 - **Plan the rest of today** is a violet button on the Dashboard, and an **Ask Atlas** button floats
   at the bottom right.
 - **Area colour where it means something:** every task has a coloured edge for its area, and so does
