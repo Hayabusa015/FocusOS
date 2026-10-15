@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FocusSession } from '@shared/core';
 import { errorMessage } from '@/hooks/useLive';
+import { FIXED_LINES, focusStartLine } from '@shared/voice';
 import { playChime } from '@/lib/sound';
+import { speaker } from '@/lib/voice';
 import { buttonPrimary, buttonQuiet, ErrorNote } from './ui';
 
 const CHOICES = [15, 25, 45] as const;
@@ -106,6 +108,23 @@ export function FocusScreen({
   useEffect(() => {
     if (over && sound) playChime(true);
   }, [over, sound]);
+
+  // Atlas says when it starts, at the halfway point, and when it ends.
+  const said = useRef({ start: false, half: false, end: false });
+  useEffect(() => {
+    if (!said.current.start) {
+      said.current.start = true;
+      speaker.say(focusStartLine(session.plannedMinutes), { event: 'focus' });
+    }
+    if (!said.current.half && !over && elapsed >= total / 2) {
+      said.current.half = true;
+      speaker.say(FIXED_LINES.focusHalf, { event: 'focus' });
+    }
+    if (!said.current.end && over) {
+      said.current.end = true;
+      speaker.say(FIXED_LINES.focusEnd, { event: 'focus' });
+    }
+  }, [elapsed, over, total, session.plannedMinutes]);
 
   async function finish(completed: boolean, alsoCompleteTask = false) {
     try {

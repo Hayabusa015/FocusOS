@@ -101,6 +101,14 @@ const api: CortexApi = {
     applyBrainDump: (tasks) => call(CHANNELS.atlasDumpApply, tasks),
     onChunk: (listener) => subscribe(EVENTS.atlasChunk, listener),
   },
+  voice: {
+    status: () => call(CHANNELS.voiceStatus),
+    speak: (text) => call(CHANNELS.voiceSpeak, { text }),
+    preview: (text, design) => call(CHANNELS.voicePreview, { text, design }),
+    transcribe: (audio, mime) => call(CHANNELS.voiceTranscribe, { audio, mime }),
+    prerender: () => call(CHANNELS.voicePrerender),
+    onToggle: (listener) => subscribe(EVENTS.voiceToggle, () => listener()),
+  },
   settings: {
     get: () => call(CHANNELS.settingsGet),
     update: (patch) => call(CHANNELS.settingsUpdate, patch),

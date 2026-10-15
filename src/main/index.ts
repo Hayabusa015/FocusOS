@@ -29,17 +29,21 @@ import { createCaptureWindow } from './capture-window';
 import { createNotifier } from './notifier';
 import { registerCoreIpc } from './ipc/core';
 import { registerAtlasIpc } from './ipc/atlas';
+import { registerVoiceIpc } from './ipc/voice';
+import { createAudioCache } from './voice/audio-cache';
+import { createVoiceService } from './voice/service';
+import { createVoiceStudioBackend } from './voice/voicestudio';
 import { createAtlas } from './atlas';
 import { createFakeAtlasClient } from './atlas/fake-api';
 import { createFileSecretStore, createMemorySecretStore } from './atlas/secrets';
 import { UpdaterController } from './domain/updater-controller';
 import { buildCsp } from '@shared/csp';
 import { registerIpc } from './ipc';
-import { makeTrustCheck } from './ipc/trust';
+import { isAppUrl, makeTrustCheck } from './ipc/trust';
 import { createLogger } from './log';
 import { createElectronUpdaterBackend } from './updater';
 import { createFakeUpdaterBackend } from './updater-fake';
-import { atlasFake, testHooksEnabled, updaterMode } from './test-hooks';
+import { atlasFake, testHooksEnabled, updaterMode, voiceStudioUrl } from './test-hooks';
 
 const APP_ID = 'org.shull.cortex';
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'];
@@ -127,8 +131,20 @@ function applySecurity(): void {
     });
   });
   // No camera, microphone, notifications or the like until a feature asks for one explicitly.
-  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) =>
-    callback(false),
+  // The one exception is the microphone, for push-to-talk, and only audio, only for Cortex's own pages.
+  session.defaultSession.setPermissionRequestHandler(
+    (webContents, permission, callback, details) => {
+      const types = (details as { mediaTypes?: string[] }).mediaTypes;
+      const audioOnly =
+        permission === 'media' && Array.isArray(types) && types.every((t) => t === 'audio');
+      callback(audioOnly && isAppUrl(webContents.getURL(), devServerUrl));
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (webContents, permission) =>
+      permission === 'media' &&
+      webContents !== null &&
+      isAppUrl(webContents.getURL(), devServerUrl),
   );
 }
 
@@ -224,7 +240,48 @@ if (!app.requestSingleInstanceLock()) {
       };
     };
 
+    // Atlas's voice (Phase 4). VoiceStudio is optional: with it gone, speech falls back in the
+    // window and nothing here ever raises an error.
+    const audioCache = createAudioCache(join(dataDir, 'audio-cache'));
+    audioCache.prune(300 * 1024 * 1024);
+    const voice = createVoiceService({
+      backend: createVoiceStudioBackend(
+        (() => {
+          const url = voiceStudioUrl(app.isPackaged, process.env);
+          return url ? { baseUrl: url } : {};
+        })(),
+      ),
+      cache: audioCache,
+      design: () => currentSettings().voiceDesign,
+      log: (message) => log.warn(message),
+    });
+    const prerender = () => {
+      if (!currentSettings().voiceEnabled) return;
+      void voice.prerender().catch(() => undefined);
+    };
+    // The record-from-anywhere hotkey is only held while speech is on, so it never takes a key for nothing.
+    let voiceHotkey: string | null = null;
+    const applyVoiceHotkey = (): boolean => {
+      if (voiceHotkey) globalShortcut.unregister(voiceHotkey);
+      voiceHotkey = null;
+      const s = currentSettings();
+      if (!s.voiceEnabled) return true;
+      try {
+        const ok = globalShortcut.register(s.voiceHotkey, () => {
+          showWindow();
+          broadcast(EVENTS.voiceToggle, null);
+        });
+        if (ok) voiceHotkey = s.voiceHotkey;
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+    if (!applyVoiceHotkey()) log.warn('The voice hotkey is taken by another program');
+    setTimeout(prerender, 5000);
+
     registerIpc({ updater, dataDir, isTrustedSender });
+    registerVoiceIpc({ voice, isTrustedSender });
     registerCoreIpc({
       store: coreStore,
       isTrustedSender,
@@ -243,6 +300,15 @@ if (!app.requestSingleInstanceLock()) {
         try {
           const next = writeSettings(settings, patch);
           keepInTray = next.keepRunningInTray;
+          // Voice: re-take the hotkey, and render the fixed lines again if the voice changed.
+          if ('voiceEnabled' in patch || 'voiceHotkey' in patch) {
+            if (!applyVoiceHotkey() && patch.voiceHotkey) {
+              writeSettings(settings, { voiceHotkey: before.voiceHotkey });
+              applyVoiceHotkey();
+              throw new Error('That shortcut is not available. Another program may be using it.');
+            }
+          }
+          if (patch.voiceDesign || patch.voiceEnabled) prerender();
         } catch (error) {
           hotkeyOk = capture?.setHotkey(before.captureHotkey) ?? false;
           throw error;

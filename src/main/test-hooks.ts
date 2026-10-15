@@ -25,3 +25,14 @@ export function updaterMode(
 export function atlasFake(isPackaged: boolean, env: Record<string, string | undefined>): boolean {
   return !isPackaged && env['CORTEX_TEST_ATLAS'] === 'fake';
 }
+
+/**
+ * A stand-in VoiceStudio address (CORTEX_TEST_VOICESTUDIO_URL) for the end-to-end tests. Read only
+ * in an unpackaged build, so an installed app always talks to the real one on port 3900.
+ */
+export function voiceStudioUrl(
+  isPackaged: boolean,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  return isPackaged ? undefined : env['CORTEX_TEST_VOICESTUDIO_URL'];
+}

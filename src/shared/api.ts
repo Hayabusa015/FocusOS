@@ -41,6 +41,7 @@ import type {
   SortApply,
   SortResult,
 } from './atlas-modes';
+import type { VoiceClip, VoiceDesign, VoiceStatusView, VoiceTranscript } from './voice';
 import type { AppInfo, UpdaterState } from './schemas';
 
 /** The only thing the renderer can call. Implemented in the preload script. */
@@ -137,6 +138,19 @@ export interface CortexApi {
     applyBrainDump(tasks: BrainDumpApply): Promise<AtlasOutcome<ApplyOutcome>>;
     /** A piece of the reply as it streams in. */
     onChunk(listener: (text: string) => void): () => void;
+  };
+  voice: {
+    /** Whether VoiceStudio is answering, and how many fixed lines are ready. */
+    status(): Promise<VoiceStatusView>;
+    /** Audio for a line in the chosen voice, or a quiet "use the fallback". Never throws for a missing VoiceStudio. */
+    speak(text: string): Promise<VoiceClip>;
+    /** The same, in a candidate voice (Settings → Voice). */
+    preview(text: string, design: VoiceDesign): Promise<VoiceClip>;
+    transcribe(audio: Uint8Array, mime: string): Promise<VoiceTranscript>;
+    /** Renders the fixed lines that are not cached yet. */
+    prerender(): Promise<{ rendered: number; skipped: number; failed: number }>;
+    /** The voice hotkey was pressed. */
+    onToggle(listener: () => void): () => void;
   };
   settings: {
     get(): Promise<SettingsInfo>;

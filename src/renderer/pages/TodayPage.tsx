@@ -1,154 +1,139 @@
 import { useCallback, useState } from 'react';
 import { Schedule } from '@/components/Schedule';
 import { PlanDialog } from '@/components/atlas/PlanDialog';
-import { Card, ErrorNote, SectionTitle, buttonQuiet } from '@/components/ui';
-import { DailyList } from '@/components/DailyList';
+import { ErrorNote, buttonQuiet } from '@/components/ui';
+import { PulseLists } from '@/components/PulseLists';
+import { PulseProgress } from '@/components/PulseProgress';
+import { PulseIcon } from '@/components/PulseIcon';
 import { TaskList } from '@/components/TaskList';
 import { useLive, errorMessage } from '@/hooks/useLive';
 import { minutesText } from '@/lib/dates';
-import { dryLine, greeting } from '@/lib/format';
 import type { PageProps } from './types';
-
-export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
+export function TodayPage({ areas, openTask, focus, shutdown }: PageProps) {
   const load = useCallback(() => window.cortex.today.get(), []);
   const { data: today, error } = useLive(load, 30_000);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [planning, setPlanning] = useState(false);
-  const now = new Date();
-
-  const run = (action: () => Promise<unknown>) => {
-    setActionError(null);
-    action().catch((e: unknown) => setActionError(errorMessage(e)));
+  const [actionError, setActionError] = useState<string | null>(null),
+    [planning, setPlanning] = useState(false),
+    [areaId, setAreaId] = useState('');
+  const allTasks = [...(today?.dueToday ?? []), ...(today?.doneToday ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
+  );
+  const tasks = allTasks.filter((t) => !areaId || t.areaId === areaId),
+    next = tasks.find((t) => t.status !== 'done');
+  const filteredToday = today && {
+    ...today,
+    blocks: today.blocks.filter((t) => !areaId || t.areaId === areaId),
   };
-
-  const dateText = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-
   return (
-    <div>
-      <header className="mb-6 flex items-start justify-between gap-4">
+    <div className="pulse-today">
+      <header className="pulse-page-heading">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">{greeting(now)}</h1>
-          <p className="mt-1 text-ink-muted">{dateText}</p>
-          {today && (
-            <p data-testid="dry-line" className="mt-3 max-w-xl text-base text-pretty">
-              {dryLine({
-                phase: today.arc.phase,
-                dueToday: today.dueToday.map((t) => ({ title: t.title, size: t.size })),
-                doneToday: today.counters.tasksDone,
-                carriedForward: today.carryForward.length,
-              })}
-            </p>
-          )}
+          <p className="pulse-date">
+            {new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          <h1>Today</h1>
+          <p>Your lists. Your rhythm. Every little win adds up.</p>
         </div>
-        <span className="flex gap-2">
-          <button className={buttonQuiet} onClick={() => setPlanning(true)}>
-            Plan the rest of today
-          </button>
-          <button className={buttonQuiet} onClick={() => newTask()}>
-            Add task
-          </button>
-        </span>
+        <select
+          className="pulse-filter"
+          aria-label="Filter by area"
+          value={areaId}
+          onChange={(e) => setAreaId(e.target.value)}
+        >
+          <option value="">All areas</option>
+          {areas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
       </header>
-      {planning && <PlanDialog onClose={() => setPlanning(false)} />}
       <ErrorNote message={error ?? actionError} />
-
+      {planning && <PlanDialog onClose={() => setPlanning(false)} />}
+      {!today && !error && (
+        <p role="status" className="text-ink-muted">
+          Loading your day…
+        </p>
+      )}
       {today && (
-        <>
-          <Card label="Now and next" className="mb-4">
-            {today.nowBlock ? (
-              <p data-testid="now-bar">
-                <span className="text-xs font-semibold text-accent-soft">Now</span>
-                <span className="ml-3 text-lg font-medium">{today.nowBlock.title}</span>
-                <span className="ml-3 text-sm text-ink-muted">
-                  {minutesText(today.nowBlock.minutesLeft)} left
-                </span>
-              </p>
-            ) : (
-              <p className="text-ink-muted" data-testid="now-bar">
-                Nothing scheduled right now.
-              </p>
-            )}
-            {today.nextBlock && (
-              <p className="mt-2 text-sm text-ink-muted" data-testid="next-bar">
-                <span className="text-xs font-semibold">Next</span>
-                <span className="ml-3 text-ink">{today.nextBlock.title}</span>
-                <span className="ml-3">in {minutesText(today.nextBlock.startsInMinutes)}</span>
-              </p>
-            )}
-          </Card>
-
-          <Card label="Your day" className="mb-6">
-            <div
-              role="progressbar"
-              aria-label="How much of your day has passed"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(today.arc.fraction * 100)}
-              className="h-2 rounded-full bg-raised"
-            >
-              <div
-                className="glow-violet h-full rounded-full bg-brand-violet"
-                style={{ width: `${today.arc.fraction * 100}%` }}
-              />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
-              <span>
-                {today.arc.phase === 'before' && `Your day starts at ${today.dayStart}.`}
-                {today.arc.phase === 'during' &&
-                  `${minutesText(today.arc.minutesLeft)} left in your day.`}
-                {today.arc.phase === 'after' && 'The day is done. Anything left can wait.'}
-              </span>
-              <span data-testid="counters">
-                <span className="text-win">{today.counters.tasksDone}</span> of{' '}
-                {today.counters.tasksTotal} tasks done
-                {today.counters.blocksTotal > 0 &&
-                  ` · ${today.counters.blocksDone} of ${today.counters.blocksTotal} blocks`}
-                {` · ${today.counters.winsToday} ${today.counters.winsToday === 1 ? 'win' : 'wins'} · ${today.counters.xpToday} XP`}
-              </span>
-            </div>
-          </Card>
-
-          {today.blocks.length > 0 && (
-            <section aria-label="Timeline" className="mb-6">
-              <SectionTitle>Schedule</SectionTitle>
-              <Schedule today={today} areas={areas} openTask={openTask} />
-            </section>
-          )}
-
-          <section aria-label="Today's list" className="mb-6">
-            <SectionTitle hint="Tick things off as you go">Today&apos;s list</SectionTitle>
-            <Card label="Daily task list">
-              <DailyList
-                today={today}
-                areas={areas}
-                openTask={openTask}
-                onFocus={(t) => focus(t.id)}
-              />
-            </Card>
-          </section>
-
-          {today.carryForward.length > 0 && (
-            <section aria-label="Carried forward" className="mb-6">
-              <SectionTitle hint="From earlier days. Move what still matters; the rest can wait.">
-                Carried forward
-              </SectionTitle>
-              <TaskList
-                tasks={today.carryForward}
+        <div className="pulse-layout">
+          <div>
+            <PulseProgress tasks={tasks} xp={today.counters.xpToday} />
+            <div data-testid="daily-list">
+              <PulseLists
+                tasks={tasks}
                 areas={areas}
                 onOpen={openTask}
-                onError={setActionError}
-                trailing={(t) => (
-                  <button
-                    className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 group-hover:opacity-100"
-                    onClick={() => run(() => window.cortex.tasks.reschedule(t.id, today.date))}
-                  >
-                    Move to today
-                  </button>
-                )}
+                onFocus={focus}
+                addLabel="Add to today and press Enter"
+                onAdd={(title) =>
+                  window.cortex.tasks.create({ title, dueDate: today.date, areaId: areaId || null })
+                }
               />
+            </div>
+            {today.carryForward.filter((t) => !areaId || t.areaId === areaId).length > 0 && (
+              <section className="pulse-carried">
+                <h2>Carried forward</h2>
+                <p>Move what still matters. The rest can wait.</p>
+                <TaskList
+                  tasks={today.carryForward.filter((t) => !areaId || t.areaId === areaId)}
+                  areas={areas}
+                  onOpen={openTask}
+                  onError={setActionError}
+                  trailing={(t) => (
+                    <button
+                      className={buttonQuiet}
+                      onClick={() =>
+                        void window.cortex.tasks
+                          .reschedule(t.id, today.date)
+                          .catch((e: unknown) => setActionError(errorMessage(e)))
+                      }
+                    >
+                      Move to today
+                    </button>
+                  )}
+                />
+              </section>
+            )}
+          </div>
+          <aside className="pulse-day-aside" aria-label="Focus and schedule">
+            <section className="pulse-focus-card">
+              <span>Your next step</span>
+              <h2>{next?.title ?? 'A little room to breathe.'}</h2>
+              <p>{next ? 'Just this one thing.' : 'Capture a thought or add your first list.'}</p>
+              <button className="btn pulse-focus-button" onClick={() => focus(next?.id)}>
+                <PulseIcon name="play" />
+                Start focusing
+              </button>
             </section>
-          )}
-        </>
+            <div className="pulse-schedule-heading">
+              <h2>Your day</h2>
+              <button onClick={() => setPlanning(true)}>Plan the rest of today</button>
+            </div>
+            {today.nowBlock && (
+              <p className="pulse-now" data-testid="now-bar">
+                Now: {today.nowBlock.title} · {minutesText(today.nowBlock.minutesLeft)} left
+              </p>
+            )}
+            {filteredToday && filteredToday.blocks.length > 0 ? (
+              <Schedule today={filteredToday} areas={areas} openTask={openTask} />
+            ) : (
+              <p className="pulse-empty">Nothing scheduled here. Some room to think.</p>
+            )}
+            <div className="pulse-day-end">
+              <span>
+                {today.arc.phase === 'during'
+                  ? `${minutesText(today.arc.minutesLeft)} left in your day`
+                  : today.arc.phase === 'before'
+                    ? `Your day starts at ${today.dayStart}`
+                    : 'The day is done. Anything left can wait.'}
+              </span>
+              <button onClick={shutdown}>
+                Wrap up your day <PulseIcon name="chevron" />
+              </button>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AppInfo, UpdaterState } from '@shared/schemas';
 import { AtlasSettings } from '@/components/atlas/AtlasSettings';
 import { CoreSettings } from '@/components/CoreSettings';
+import { VoiceSettings } from '@/components/VoiceSettings';
 import { formatWhen } from '@/lib/format';
 
 const STATUS_TEXT: Record<UpdaterState['status'], string> = {
@@ -78,6 +79,8 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
       <CoreSettings />
 
       <AtlasSettings />
+
+      <VoiceSettings />
 
       <section
         aria-labelledby="about-heading"

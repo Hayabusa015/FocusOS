@@ -8,6 +8,8 @@ export function buildCsp(dev: boolean): string {
         "style-src 'self' 'unsafe-inline'",
         "connect-src 'self' ws://localhost:* http://localhost:*",
         "img-src 'self' data:",
+        // Spoken clips are played from in-memory blobs.
+        "media-src 'self' blob:",
       ]
     : [
         "default-src 'self'",
@@ -15,6 +17,8 @@ export function buildCsp(dev: boolean): string {
         // Inline style attributes (for example a progress bar's width) are allowed; inline script is not.
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data:",
+        // Spoken clips are played from in-memory blobs. The renderer still makes no network calls.
+        "media-src 'self' blob:",
         "connect-src 'none'",
         "object-src 'none'",
         "base-uri 'none'",

@@ -62,16 +62,14 @@ async function launch(
 
 test.afterAll(() => dataDirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
-test('opens on an empty dashboard and shows the installed version in Settings', async () => {
+test('opens on an empty Today workspace and shows the installed version in Settings', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'cortex-e2e-'));
   dataDirs.push(dataDir);
   const { app, page, errors } = await launch(dataDir);
   try {
-    await expect(
-      page.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still up/ }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     await expect(page.getByText("Nothing on today's list yet")).toBeVisible();
-    await expect(page.getByTestId('tile-inbox')).toContainText('0');
+    await expect(page.getByTestId('inbox-count')).toContainText('0');
     await page.screenshot({ path: 'test-results/today.png' });
 
     await expect(page.getByTestId('sidebar-version')).toHaveText(`Version ${VERSION}`);
@@ -123,6 +121,7 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
         'undo',
         'upcoming',
         'updater',
+        'voice',
       ],
     });
 
@@ -319,10 +318,14 @@ test('capture window: Enter puts the task in the Inbox in under a second; Esc sa
 });
 
 test('the capture shortcut is registered with the system', async () => {
-  const { app } = await launch(newDataDir());
+  const { app, page } = await launch(newDataDir());
   try {
+    // Use a test shortcut so an installed Cortex instance can keep its default key.
+    await page.evaluate(() =>
+      window.cortex.settings.update({ captureHotkey: 'Control+Alt+Shift+F10' }),
+    );
     const registered = await app.evaluate(({ globalShortcut }) =>
-      globalShortcut.isRegistered('Control+Alt+N'),
+      globalShortcut.isRegistered('Control+Alt+Shift+F10'),
     );
     // Linux test machines may refuse global shortcuts; Windows is checked by hand.
     test.skip(!registered && process.platform !== 'win32', 'no global shortcuts in this session');
@@ -403,6 +406,7 @@ test('a repeating task makes its next instance; undo takes it back', async () =>
 test('home maintenance: starting point, Done restarts the clock, undo reverses', async () => {
   const { app, page, errors } = await launch(newDataDir());
   try {
+    await page.getByRole('button', { name: 'Other spaces' }).click();
     await page.getByRole('button', { name: 'Home maintenance' }).click();
     await page.getByRole('button', { name: '+ Replace the HVAC air filter' }).click();
     const card = page.getByRole('region', { name: 'Replace the HVAC air filter' });
@@ -419,49 +423,32 @@ test('home maintenance: starting point, Done restarts the clock, undo reverses',
 
 // --- Daily list, dashboard, drag and steps --------------------------------------------------
 
-test('dashboard and daily list: add to today, tick, steps indent, reorder, undo', async () => {
+test('Today lists: add, complete, indent, outdent, keyboard reorder and undo', async () => {
   const { app, page, errors } = await launch(newDataDir());
   try {
-    // Dashboard is the home screen, and the daily list is on it.
-    await expect(
-      page.getByRole('heading', { name: /Good (morning|afternoon|evening)|Still up/ }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     const list = page.getByTestId('daily-list');
     const add = list.getByPlaceholder('Add to today and press Enter');
     for (const title of ['Alpha', 'Beta', 'Gamma']) {
       await add.fill(title);
       await add.press('Enter');
-      await expect(list.locator('button.min-w-0', { hasText: title })).toBeVisible();
+      await expect(list.locator('.pulse-list-title', { hasText: title })).toBeVisible();
     }
-    await expect(page.getByTestId('tile-due')).toContainText('3');
-
-    // Tick one: it moves to Done, struck through, and the tile counts it.
-    await list.getByRole('checkbox', { name: 'Complete Alpha' }).click();
-    await expect(list.getByTestId('task-row-done')).toContainText('Alpha');
+    await expect(list.locator('[data-list-id]')).toHaveCount(3);
+    await list.getByRole('checkbox', { name: 'Complete Alpha', exact: true }).click();
+    await expect(list.getByRole('checkbox', { name: 'Reopen Alpha', exact: true })).toBeChecked();
     await expect(page.getByTestId('tile-today')).toContainText('1 of 3');
-
-    // Indent Gamma under Beta with the button; Beta shows a step count and a nested row.
-    await list.getByRole('button', { name: 'Indent Gamma' }).click();
-    await expect(list.getByRole('button', { name: 'Outdent Gamma' })).toBeVisible();
+    await list.locator('.pulse-list-title', { hasText: 'Gamma' }).press('Alt+ArrowRight');
+    await expect(list.locator('.pulse-child-title', { hasText: 'Gamma' })).toBeVisible();
     await expect(list).toContainText('0/1 steps');
-
-    // Outdent brings it back to the main list.
-    await list.getByRole('button', { name: 'Outdent Gamma' }).click();
-    await expect(list.getByRole('button', { name: 'Indent Gamma' })).toBeVisible();
-
-    // Keyboard reorder: Alt+Up moves Gamma above Beta.
-    const order = () => list.getByTestId('task-row').locator('button.min-w-0').allInnerTexts();
-    expect((await order()).map((t) => t.split('\n')[0])).toEqual(['Beta', 'Gamma']);
-    await list.locator('button.min-w-0', { hasText: 'Gamma' }).press('Alt+ArrowUp');
-    await expect
-      .poll(async () => (await order()).map((t) => t.split('\n')[0]))
-      .toEqual(['Gamma', 'Beta']);
-
-    // Undo puts the order back.
-    await page.getByRole('button', { name: 'Undo' }).click();
-    await expect
-      .poll(async () => (await order()).map((t) => t.split('\n')[0]))
-      .toEqual(['Beta', 'Gamma']);
+    await list.locator('.pulse-child-title', { hasText: 'Gamma' }).press('Alt+ArrowLeft');
+    await expect(list.locator('.pulse-list-title', { hasText: 'Gamma' })).toBeVisible();
+    const order = () => list.locator('.pulse-list-title strong').allInnerTexts();
+    await expect.poll(order).toEqual(['Alpha', 'Beta', 'Gamma']);
+    await list.locator('.pulse-list-title', { hasText: 'Gamma' }).press('Alt+ArrowUp');
+    await expect.poll(order).toEqual(['Alpha', 'Gamma', 'Beta']);
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect.poll(order).toEqual(['Alpha', 'Beta', 'Gamma']);
     expect(errors).toEqual([]);
   } finally {
     await app.close();
@@ -480,9 +467,7 @@ test('drag a task by its handle to reorder the list', async () => {
     });
     const list = page.getByTestId('daily-list');
     const names = async () =>
-      (await list.getByTestId('task-row').locator('button.min-w-0').allInnerTexts()).map(
-        (t) => t.split('\n')[0],
-      );
+      (await list.locator('.pulse-list-title strong').allInnerTexts()).map((t) => t.split('\n')[0]);
     await expect.poll(names).toEqual(['One', 'Two', 'Three']);
     const handle = list
       .getByTestId('task-row')
@@ -490,7 +475,9 @@ test('drag a task by its handle to reorder the list', async () => {
       .getByTestId('drag-handle');
     await handle.hover();
     // Drop on the top half of the first row, which means "before it".
-    await handle.dragTo(list.getByTestId('task-row').first(), { targetPosition: { x: 60, y: 3 } });
+    await handle.dragTo(list.locator('.pulse-list-heading').first(), {
+      targetPosition: { x: 60, y: 3 },
+    });
     await expect.poll(names).toEqual(['Three', 'One', 'Two']);
   } finally {
     await app.close();
@@ -517,7 +504,9 @@ test('finishing a task celebrates, earns XP and a win; undo takes them back', as
     // 10 for the task, and 10 for emptying the inbox (it was added without an area).
     await expect(page.getByTestId('celebration-xp')).toHaveText('+20 XP');
     await expect(page.getByTestId('tile-xp')).toContainText('20');
-    await expect(page.getByTestId('progress-card')).toContainText('Warming up');
+    await expect(
+      page.getByRole('progressbar', { name: 'Overall completion', exact: true }),
+    ).toHaveAttribute('aria-valuenow', '100');
 
     await page.getByRole('navigation').getByRole('button', { name: 'Wins' }).click();
     await expect(page.getByText('Grade the quizzes', { exact: true })).toBeVisible();
@@ -571,7 +560,8 @@ test('focus session: pick a length, see only the timer, Esc ends it', async () =
         dueDate: new Date().toISOString().slice(0, 10),
       }),
     );
-    await page.getByRole('button', { name: 'Start a focus session' }).click();
+    await page.getByText('Daily rituals', { exact: true }).click();
+    await page.getByRole('button', { name: 'Focus session', exact: true }).click();
     await page.getByRole('button', { name: '15 min' }).click();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     const screen = page.getByTestId('focus-screen');
@@ -584,7 +574,7 @@ test('focus session: pick a length, see only the timer, Esc ends it', async () =
     expect(await page.evaluate(() => window.cortex.focus.active())).toBeNull();
 
     // Starting again and pressing Done also closes it.
-    await page.getByRole('button', { name: 'Start a focus session' }).click();
+    await page.getByRole('button', { name: 'Focus session', exact: true }).click();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await screen.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(screen).toHaveCount(0);
@@ -635,6 +625,7 @@ test('shutdown ritual: every open task gets a home, then the day closes', async 
         await window.cortex.tasks.create({ title, dueDate: due });
       }
     }, todayDate());
+    await page.getByText('Daily rituals', { exact: true }).click();
     await page.getByRole('button', { name: 'Shutdown', exact: true }).click();
     const ritual = page.getByTestId('shutdown');
     await ritual.getByRole('button', { name: 'Next' }).click(); // wins

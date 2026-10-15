@@ -17,20 +17,25 @@
   --color-brand-violet: #7e47ff;
 
   /* Ground and surfaces: a near-black page with slightly lifted sheets */
-  --color-ground: #0e0f12;
-  --color-surface: #16181d;
-  --color-raised: #20232a;
-  --color-line: #2b2e37;
+  --color-ground: #0f1014;
+  --color-surface: #191a22;
+  --color-raised: #252630;
+  --color-line: #343440;
+  --color-pulse-edge: #574077;
+  --color-pulse-violet-soft: #c4a6ff;
+  --color-pulse-gold-soft: #ffe3a1;
+  --color-pulse-gold-light: #ffdc77;
+  --color-pulse-gold-deep: #efa313;
 
   /* The side rail: the logo's near-black, so the brand frames the app instead of decorating it */
-  --color-rail: #0a0b0d;
+  --color-rail: #121318;
   --color-rail-raised: #1a1c22;
   --color-rail-ink: #eceef3;
   --color-rail-muted: #8c91a0;
 
   /* Text */
   --color-ink: #eceef3;
-  --color-ink-muted: #9a9fae;
+  --color-ink-muted: #aaa9bb;
 
   /* Brand and states. Gold fills (dark text on it); violet is the accent for text and marks. */
   --color-accent: #febb26;
