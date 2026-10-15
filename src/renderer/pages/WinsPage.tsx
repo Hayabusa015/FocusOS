@@ -38,7 +38,10 @@ export function LevelBar({ summary }: { summary: GamificationSummary }) {
 export function StreakDots({ summary }: { summary: GamificationSummary }) {
   return (
     <div className="flex items-center gap-3">
-      <span data-testid="streak" className="text-2xl font-semibold tracking-tight">
+      <span
+        data-testid="streak"
+        className="font-display whitespace-nowrap text-3xl font-bold tracking-tight"
+      >
         {summary.streak.active} / {summary.streak.of}
       </span>
       <span className="flex gap-1.5" aria-hidden>
@@ -162,7 +165,7 @@ export function WinsPage() {
           <div className="space-y-3">
             {data.recent.map((day) => (
               <div key={day.date}>
-                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <h3 className="mb-1 text-xs font-semibold text-ink-muted">
                   {friendlyDate(day.date)}
                 </h3>
                 <ul className="space-y-0.5 text-sm">

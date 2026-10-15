@@ -89,9 +89,7 @@ export function MaintenancePage() {
 
       {unused.length > 0 && (
         <section aria-label="Starting points" className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-muted">
-            Starting points
-          </h2>
+          <h2 className="mb-2 text-sm font-semibold text-ink-muted">Starting points</h2>
           <div className="flex flex-wrap gap-2">
             {unused.map((t) => (
               <button
@@ -109,9 +107,7 @@ export function MaintenancePage() {
       )}
 
       <Card label="Add your own">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">
-          Add your own
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold text-ink-muted">Add your own</h2>
         <form
           className="grid gap-3 sm:grid-cols-[1fr_8rem_10rem_auto] sm:items-end"
           onSubmit={(e) => {

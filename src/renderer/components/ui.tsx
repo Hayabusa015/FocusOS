@@ -86,7 +86,11 @@ export function Card({
   );
 }
 
-/** The raised sheet: where the work is. Used once or twice a page, never for decoration. */
+/**
+ * The raised sheet: where the work is. Used once or twice a page, never for decoration. It is a
+ * plate in a tray (an outer shell with a hairline, an inner face with a lit top edge) so it reads
+ * as an object, with a shadow tinted by the brand violet rather than plain black.
+ */
 export function Sheet({
   children,
   className = '',
@@ -97,11 +101,8 @@ export function Sheet({
   label?: string;
 }) {
   return (
-    <section
-      aria-label={label}
-      className={`rounded-card border border-line bg-surface p-5 ${className}`}
-    >
-      {children}
+    <section aria-label={label} className={`sheet-shell ${className}`}>
+      <div className="sheet-face">{children}</div>
     </section>
   );
 }

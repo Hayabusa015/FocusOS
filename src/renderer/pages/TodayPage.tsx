@@ -6,7 +6,7 @@ import { DailyList } from '@/components/DailyList';
 import { TaskList } from '@/components/TaskList';
 import { useLive, errorMessage } from '@/hooks/useLive';
 import { minutesText } from '@/lib/dates';
-import { greeting } from '@/lib/format';
+import { dryLine, greeting } from '@/lib/format';
 import type { PageProps } from './types';
 
 export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
@@ -29,6 +29,16 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
         <div>
           <h1 className="text-4xl font-bold tracking-tight">{greeting(now)}</h1>
           <p className="mt-1 text-ink-muted">{dateText}</p>
+          {today && (
+            <p data-testid="dry-line" className="mt-3 max-w-xl text-base text-pretty">
+              {dryLine({
+                phase: today.arc.phase,
+                dueToday: today.dueToday.map((t) => ({ title: t.title, size: t.size })),
+                doneToday: today.counters.tasksDone,
+                carriedForward: today.carryForward.length,
+              })}
+            </p>
+          )}
         </div>
         <span className="flex gap-2">
           <button className={buttonQuiet} onClick={() => setPlanning(true)}>
@@ -47,9 +57,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
           <Card label="Now and next" className="mb-4">
             {today.nowBlock ? (
               <p data-testid="now-bar">
-                <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
-                  Now
-                </span>
+                <span className="text-xs font-semibold text-accent-soft">Now</span>
                 <span className="ml-3 text-lg font-medium">{today.nowBlock.title}</span>
                 <span className="ml-3 text-sm text-ink-muted">
                   {minutesText(today.nowBlock.minutesLeft)} left
@@ -62,7 +70,7 @@ export function TodayPage({ areas, openTask, newTask, focus }: PageProps) {
             )}
             {today.nextBlock && (
               <p className="mt-2 text-sm text-ink-muted" data-testid="next-bar">
-                <span className="text-xs font-semibold uppercase tracking-wide">Next</span>
+                <span className="text-xs font-semibold">Next</span>
                 <span className="ml-3 text-ink">{today.nextBlock.title}</span>
                 <span className="ml-3">in {minutesText(today.nextBlock.startsInMinutes)}</span>
               </p>

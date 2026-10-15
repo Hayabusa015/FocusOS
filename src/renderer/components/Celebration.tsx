@@ -90,9 +90,7 @@ export function Celebration() {
                 key={title}
                 className="xp-pill rounded-card border border-line bg-surface px-4 py-2 text-sm shadow-lg"
               >
-                <span className="text-xs font-semibold uppercase tracking-wide text-accent-soft">
-                  Achievement unlocked
-                </span>
+                <span className="text-xs font-semibold text-accent-soft">Achievement unlocked</span>
                 <span className="block font-medium">{title}</span>
               </div>
             ))}

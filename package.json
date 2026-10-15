@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.130.0",
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
     "electron-updater": "6.8.10",
     "zod": "4.6.5"
   },

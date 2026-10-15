@@ -109,7 +109,7 @@ export function ShutdownRitual({ onClose, onSortInbox }: { onClose(): void; onSo
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <p className="text-sm uppercase tracking-widest text-ink-muted">Shutdown</p>
+        <p className="text-sm text-ink-muted">Shutdown</p>
         <ErrorNote message={error ?? actionError} />
         {view && closed && (
           <div className="mt-6 text-center" data-testid="shutdown-closed">

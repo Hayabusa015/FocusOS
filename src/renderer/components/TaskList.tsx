@@ -273,7 +273,7 @@ export function TaskList({
       )}
       {doneTasks.length > 0 && (
         <section aria-label="Done" className="mt-4">
-          <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <h3 className="mb-1 px-2 text-xs font-semibold text-ink-muted">
             Done · {doneTasks.length}
           </h3>
           <ul>

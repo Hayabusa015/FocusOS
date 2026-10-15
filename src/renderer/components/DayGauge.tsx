@@ -56,7 +56,7 @@ export function DayGauge({ today }: { today: TodayView }) {
         )}
       </svg>
       <div className="absolute inset-x-0 top-[44%] text-center">
-        <p className="text-3xl font-bold tabular-nums tracking-tight">{timeOfIso(today.nowIso)}</p>
+        <p className="font-display text-4xl font-bold tracking-tight">{timeOfIso(today.nowIso)}</p>
         <p className="mt-0.5 text-xs text-ink-muted">{caption}</p>
       </div>
       <div className="mt-1 flex justify-between text-xs tabular-nums text-ink-muted">

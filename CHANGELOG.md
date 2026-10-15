@@ -14,6 +14,11 @@ A dark look, and a day you can read at a glance. Nothing works differently.
 - **A real schedule.** Your time blocks in order, tinted with their area's colour, the block you are
   in outlined, and a line with the time showing where now falls. On the Dashboard and on Today.
 - **A lit fill.** Progress bars (level, your day, the segmented bars) and the day gauge glow in the colour they are filled with.
+- **A voice.** Headings and big numbers use Bricolage Grotesque (bundled, works offline). Labels
+  are in plain sentence case, pages ease in, sheets are a plate in a tray with a violet-tinted
+  shadow, and a faint grain keeps flat colour from looking flat.
+- **A dry line about your day** on the Dashboard and Today ("6 left today. Grade lab reports is the
+  big one."), worked out from your lists, so it costs nothing and needs no key.
 - **Plan the rest of today** is a violet button on the Dashboard, and an **Ask Atlas** button floats
   at the bottom right.
 - **Area colour where it means something:** every task has a coloured edge for its area, and so does

@@ -62,7 +62,7 @@ export function MorningBriefing({ onClose }: { onClose(): void }) {
       onKeyDown={(e) => e.key === 'Escape' && void close()}
     >
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <p className="text-sm uppercase tracking-widest text-ink-muted">Morning briefing</p>
+        <p className="text-sm text-ink-muted">Morning briefing</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{greeting(new Date())}</h1>
         <ErrorNote message={error ?? actionError} />
         {view && (

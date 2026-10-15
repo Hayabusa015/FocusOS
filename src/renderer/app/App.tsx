@@ -203,9 +203,7 @@ export function App() {
           </li>
         </ul>
 
-        <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-rail-muted">
-          Areas
-        </p>
+        <p className="mb-1 mt-6 px-3 text-xs font-semibold text-rail-muted">Areas</p>
         <ul className="space-y-1">
           {areas.map((area) => {
             const active = route.page === 'area' && route.areaId === area.id;
@@ -275,7 +273,10 @@ export function App() {
       </nav>
 
       <main className="min-w-0 flex-1 overflow-y-auto p-10">
-        <div className="mx-auto max-w-4xl">
+        <div
+          key={route.page + (route.page === 'area' ? route.areaId : '')}
+          className="rise mx-auto max-w-4xl"
+        >
           {updater?.justUpdated && <JustUpdatedCard updated={updater.justUpdated} />}
           {updater && <UpdateBanner state={updater} />}
           {route.page === 'dashboard' && <DashboardPage {...pageProps} />}

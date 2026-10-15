@@ -15,7 +15,7 @@ import { DailyList } from '@/components/DailyList';
 import { useLive } from '@/hooks/useLive';
 import { areaColor, indexAreas } from '@/lib/areas';
 import { friendlyDate, minutesText } from '@/lib/dates';
-import { greeting } from '@/lib/format';
+import { dryLine, greeting } from '@/lib/format';
 import type { PageProps } from './types';
 import { LevelBar, StreakDots } from './WinsPage';
 
@@ -42,7 +42,7 @@ function Stat({
       className="flex flex-col items-stretch gap-2 text-left transition-colors hover:text-accent-soft"
     >
       <span className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums tracking-tight">{value}</span>
+        <span className="font-display text-4xl font-bold tracking-tight">{value}</span>
         <span className="text-sm font-medium">{label}</span>
       </span>
       {bars}
@@ -83,6 +83,16 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
           <p className="mt-1 text-ink-muted">
             {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
+          {today && (
+            <p data-testid="dry-line" className="mt-3 max-w-xl text-base text-pretty">
+              {dryLine({
+                phase: today.arc.phase,
+                dueToday: today.dueToday.map((t) => ({ title: t.title, size: t.size })),
+                doneToday: today.counters.tasksDone,
+                carriedForward: today.carryForward.length,
+              })}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button className={buttonQuiet} onClick={() => focus(null)}>
@@ -261,7 +271,7 @@ export function DashboardPage({ areas, openTask, newTask, go, focus }: PageProps
                   className="grid w-full gap-4 border-t border-line pt-4 text-left"
                 >
                   <LevelBar summary={summary} />
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <span className="text-sm font-medium">Active days this week</span>
                     <StreakDots summary={summary} />
                   </div>

@@ -51,7 +51,15 @@
 
   --font-sans:
     'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  /* Headings and big numbers use a grotesque with some wit in it; the rest stays plain and legible. */
+  --font-display:
+    'Bricolage Grotesque Variable', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --radius-card: 0.5rem;
+
+  /* One easing for the whole app: quick to start, a soft landing. Never linear, never default. */
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-duration: 220ms;
 }
 
 @layer base {
@@ -71,6 +79,19 @@
   nav[aria-label='Main'] {
     scrollbar-width: thin;
     scrollbar-color: var(--color-rail-raised) transparent;
+  }
+  h1,
+  h2,
+  .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+  h1 {
+    letter-spacing: -0.025em;
+  }
+  /* Numbers line up in columns everywhere. */
+  body {
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     outline: 2px solid var(--color-accent);
