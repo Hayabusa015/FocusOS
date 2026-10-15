@@ -54,10 +54,17 @@ function sentenceEnd(text: string, end: number): number {
 
 export class SentenceChunker {
   private buffer = '';
+  private total = 0;
+
+  /** How much text has been pushed so far. */
+  get length(): number {
+    return this.total;
+  }
 
   /** Adds a piece of text and returns the sentences that are now complete. */
   push(delta: string): string[] {
     this.buffer += delta;
+    this.total += delta.length;
     const out: string[] = [];
     const emit = (piece: string) => {
       const clean = cleanForSpeech(piece);

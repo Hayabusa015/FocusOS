@@ -98,8 +98,15 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
           setDraft(text);
           return;
         }
-        for (const sentence of chunker.current.flush()) speaker.say(sentence);
-        setLines(await window.cortex.atlas.history());
+        // The stream and the final answer travel separately, so a last piece can arrive late or
+        // not at all: speak whatever of the finished reply the stream did not already deliver.
+        streamingRef.current = false;
+        const history = await window.cortex.atlas.history();
+        const reply = [...history].reverse().find((l) => l.role === 'assistant')?.text ?? '';
+        const spoken = chunker.current;
+        const missing = reply.slice(spoken.length);
+        for (const sentence of [...spoken.push(missing), ...spoken.flush()]) speaker.say(sentence);
+        setLines(history);
       })
       .catch((e: unknown) => setError({ text: errorMessage(e), setup: false }))
       .finally(() => {

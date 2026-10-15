@@ -123,6 +123,7 @@ test('the renderer is sandboxed: no Node, no require, only the Cortex API', asyn
         'undo',
         'upcoming',
         'updater',
+        'voice',
       ],
     });
 

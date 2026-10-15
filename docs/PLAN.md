@@ -16,7 +16,7 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 | 1 | Core tasks | Built (0.1.0); waiting on the user's checks on Windows: the capture hotkey, notifications and the tray. The three Phase 1 questions in §15 are still open (built with the defaults) |
 | 2 | Accomplishments and rituals | Built (0.2.0); waiting on the user's checks on Windows (the 15:30 shutdown reminder, sounds, the morning briefing on a real morning). The Phase 2 question in §15 (shutdown time) is still open; built with the 15:30 weekday default |
 | 3 | Atlas (text) | Built (0.3.0); waiting on the user's checks with a real API key (a chat, Sort, Plan and Brain dump, then `npm run test:live`). Prices in `atlas/pricing.ts` were checked 2026-10-14; the live test is the first check against the real API |
-| 4 | Atlas (voice) | Not started |
+| 4 | Atlas (voice) | Built (0.4.0); waiting on the user's checks on the PC: run `node scripts/check-voicestudio.mjs` against the real VoiceStudio, first-audio time on the GTX 1080, the `Control+Alt+Space` hotkey, and the Windows fallback voice. Sentence streaming uses one `POST /v1/audio/speech` per sentence (approved), not `/ws/tts`. The Phase 4 voice question in §15 (which voice) is open; built with the default |
 | 5 | Google Calendar and Gmail | Not started |
 | 6 | Obsidian second brain | Not started |
 | 7 | Knowledge and learning | Not started |

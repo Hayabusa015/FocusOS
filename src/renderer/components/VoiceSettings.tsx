@@ -39,6 +39,12 @@ export function VoiceSettings() {
     return () => clearInterval(timer);
   }, [refreshStatus]);
 
+  // The count of ready lines belongs to the chosen voice, so check again when the voice changes.
+  const design = s?.voiceDesign;
+  useEffect(() => {
+    if (design) refreshStatus();
+  }, [design?.instruct, design?.seed, design, refreshStatus]);
+
   const update = (patch: AppSettingsPatch) => {
     setProblem(null);
     window.cortex.settings.update(patch).catch((e: unknown) => setProblem(errorMessage(e)));

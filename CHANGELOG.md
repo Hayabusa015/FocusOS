@@ -3,6 +3,23 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.4.0] - 2026-10-15
+
+Atlas can talk, and listen. It is off until you turn it on, and nothing else depends on it.
+
+- **Atlas speaks** its replies, a sentence at a time, while the rest is still being written. It uses
+  VoiceStudio on your PC (a calm, low, British man by default); nothing leaves the machine.
+- **Settings → Voice.** Turn speech on, set the volume, choose which events are spoken (greeting,
+  briefing, next block, completions, focus start), hear five candidate voices and pick one.
+- **Fixed lines are instant.** Greetings and short confirmations are rendered once, kept on disk,
+  and played from there.
+- **If VoiceStudio is not running,** Atlas quietly uses your computer's own voice and shows a small
+  "fallback voice" label. No error dialog; it switches back on its own.
+- **Push to talk.** Hold the mic button in the Atlas panel, or press Ctrl+Alt+Space from anywhere,
+  to speak; VoiceStudio turns it into text in the message box (or sends it, if you choose).
+- **Quiet hours** are respected: no speech inside your notification quiet hours.
+- `scripts/check-voicestudio.mjs` checks a running VoiceStudio against `docs/VOICESTUDIO.md`.
+
 ## [0.3.1] - 2026-10-14
 
 A dark look, and a day you can read at a glance. Nothing works differently.

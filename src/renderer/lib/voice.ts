@@ -69,11 +69,25 @@ function playBlob(audio: Uint8Array, mime: string, volume: number): Playback {
   const url = URL.createObjectURL(new Blob([audio as BlobPart], { type: mime }));
   const el = new Audio(url);
   el.volume = Math.min(1, Math.max(0, volume));
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const done = new Promise<void>((resolve) => {
     const end = () => {
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
       resolve();
     };
+    // A clip that never reports that it ended (no output device, a stuck driver) must not hold up
+    // everything behind it: give up a little after it should have finished.
+    timer = setTimeout(end, 15_000);
+    el.addEventListener(
+      'loadedmetadata',
+      () => {
+        clearTimeout(timer);
+        const ms = Number.isFinite(el.duration) ? el.duration * 1000 : 15_000;
+        timer = setTimeout(end, ms + 1500);
+      },
+      { once: true },
+    );
     el.addEventListener('ended', end, { once: true });
     el.addEventListener('error', end, { once: true });
     el.play().catch(end);
