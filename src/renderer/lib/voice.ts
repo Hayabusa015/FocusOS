@@ -46,6 +46,24 @@ export function useFallbackBadge(): boolean {
   );
 }
 
+// --- "Atlas is speaking": for the Stop button ---------------------------------------------------------
+let speakingNow = false;
+const speakingListeners = new Set<() => void>();
+function setSpeaking(busy: boolean): void {
+  if (speakingNow === busy) return;
+  speakingNow = busy;
+  speakingListeners.forEach((l) => l());
+}
+export function useSpeaking(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      speakingListeners.add(cb);
+      return () => speakingListeners.delete(cb);
+    },
+    () => speakingNow,
+  );
+}
+
 // --- playing a clip ----------------------------------------------------------------------------------
 function playBlob(audio: Uint8Array, mime: string, volume: number): Playback {
   const url = URL.createObjectURL(new Blob([audio as BlobPart], { type: mime }));
@@ -100,6 +118,36 @@ export const speaker = createSpeaker({
   playClip: (clip, volume) => playBlob(clip.audio, clip.mime, volume),
   fallback: speechSynthesisFallback(),
   onFallback: setFallback,
+  onBusy: setSpeaking,
   onFirstAudio: (ms, cached) =>
     console.debug(`[voice] first audio in ${ms} ms${cached ? ' (cached)' : ''}`),
 });
+
+/**
+ * Plays a line in a candidate voice (Settings → Voice). Returns a sentence for the screen when it
+ * cannot: the preview only ever works through VoiceStudio, since the computer's own voice would say
+ * nothing about the candidate.
+ */
+export async function previewVoice(
+  text: string,
+  design: { instruct: string; seed: number },
+  volume: number,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  speaker.stop();
+  try {
+    const clip = await window.cortex.voice.preview(text, design);
+    if (!clip.ok) {
+      return {
+        ok: false,
+        message:
+          clip.reason === 'down'
+            ? 'VoiceStudio is not running, so there is nothing to preview. Start it and try again.'
+            : `VoiceStudio could not make that voice: ${clip.message}`,
+      };
+    }
+    await playBlob(clip.audio, clip.mime, volume).done;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'The preview failed.' };
+  }
+}

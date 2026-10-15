@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Task } from '@shared/core';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { friendlyDate, friendlyTime } from '@/lib/dates';
 import { greeting } from '@/lib/format';
+import { speaker } from '@/lib/voice';
+import { briefingLine } from '@shared/voice';
 import { buttonQuiet, ErrorNote, SectionTitle } from './ui';
 
 function Rows({ tasks, today }: { tasks: Task[]; today: string }) {
@@ -29,6 +31,14 @@ export function MorningBriefing({ onClose }: { onClose(): void }) {
   const load = useCallback(() => window.cortex.rituals.briefing(), []);
   const { data: view, error } = useLive(load);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Atlas opens the day aloud, once.
+  const spoken = useRef(false);
+  useEffect(() => {
+    if (!view || spoken.current) return;
+    spoken.current = true;
+    speaker.say(briefingLine(new Date().getHours(), view.dueToday.length), { event: 'briefing' });
+  }, [view]);
 
   async function close() {
     await window.cortex.rituals.briefingShown().catch(() => undefined);

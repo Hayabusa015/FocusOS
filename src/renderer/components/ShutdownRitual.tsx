@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Task } from '@shared/core';
 import { addDays } from '@shared/dates';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { friendlyDate, friendlyTime, timeOfIso } from '@/lib/dates';
+import { speaker } from '@/lib/voice';
+import { FIXED_LINES } from '@shared/voice';
 import { buttonPrimary, buttonQuiet, ErrorNote, inputClass } from './ui';
 
 const STEPS = ['Wins', 'Unfinished', 'Inbox', 'Tomorrow'] as const;
@@ -98,6 +100,21 @@ export function ShutdownRitual({ onClose, onSortInbox }: { onClose(): void; onSo
   // Reopened after the day was closed: only say it is closed if nothing new is open.
   const closed = finished !== null || (view?.doneToday === true && view.unfinished.length === 0);
   const open = view?.unfinished.length ?? 0;
+
+  // Atlas opens the ritual, and says the closing line when the day is closed: once each.
+  const saidOpen = useRef(false);
+  const saidClosed = useRef(false);
+  useEffect(() => {
+    if (!view) return;
+    if (closed && !saidClosed.current) {
+      saidClosed.current = true;
+      saidOpen.current = true;
+      speaker.say(FIXED_LINES.captured, { event: 'shutdown' });
+    } else if (!closed && !saidOpen.current) {
+      saidOpen.current = true;
+      speaker.say(FIXED_LINES.shutdownOpen, { event: 'shutdown' });
+    }
+  }, [view, closed]);
 
   return (
     <div

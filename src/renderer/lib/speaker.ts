@@ -28,6 +28,8 @@ export interface SpeakerDeps {
   onFallback?(active: boolean): void;
   /** Time from asking to first sound for the first line of a burst, in milliseconds. */
   onFirstAudio?(ms: number, cached: boolean): void;
+  /** True while anything is playing or waiting, false once it all stops (for a Stop button). */
+  onBusy?(busy: boolean): void;
 }
 
 export interface SayOptions {
@@ -70,6 +72,7 @@ export function createSpeaker(deps: SpeakerDeps) {
     if (running) return;
     running = true;
     const mine = generation;
+    deps.onBusy?.(true);
     try {
       while (queue.length > 0 && mine === generation) {
         const item = queue.shift() as Item;
@@ -95,7 +98,10 @@ export function createSpeaker(deps: SpeakerDeps) {
       // A loop that was stopped must not mark a newer loop as finished.
       if (mine === generation) {
         running = false;
-        if (queue.length === 0) burstOpen = false;
+        if (queue.length === 0) {
+          burstOpen = false;
+          deps.onBusy?.(false);
+        }
       }
     }
   }
@@ -126,6 +132,7 @@ export function createSpeaker(deps: SpeakerDeps) {
       burstOpen = false;
       current?.stop();
       current = null;
+      deps.onBusy?.(false);
     },
 
     /** True while anything is playing or waiting. */

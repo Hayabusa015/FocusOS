@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AtlasPanel } from '@/components/atlas/AtlasPanel';
 import { BrainDumpDialog } from '@/components/atlas/BrainDumpDialog';
 import { PlanDialog } from '@/components/atlas/PlanDialog';
@@ -23,6 +23,9 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { TodayPage } from '@/pages/TodayPage';
 import { SomedayPage } from '@/pages/SomedayPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
+import { completionLine, nextUpLine } from '@shared/voice';
+import { setVoiceSettings, speaker } from '@/lib/voice';
+import { voiceBus } from '@/lib/voice-bus';
 import type { FocusSession } from '@shared/core';
 import type { PageProps, Route } from '@/pages/types';
 import { SettingsPage } from './SettingsPage';
@@ -66,7 +69,49 @@ export function App() {
     return window.cortex.rituals.onOpenShutdown(() => setOverlay('shutdown'));
   }, []);
   const loadSettings = useCallback(() => window.cortex.settings.get(), []);
-  const soundOn = useLive(loadSettings).data?.settings.sound ?? true;
+  const settingsInfo = useLive(loadSettings).data;
+  const soundOn = settingsInfo?.settings.sound ?? true;
+
+  // Atlas's voice: the speaker follows the user's settings, and the hotkey opens the panel to record.
+  useEffect(() => {
+    if (settingsInfo) setVoiceSettings(settingsInfo.settings);
+  }, [settingsInfo]);
+  useEffect(
+    () =>
+      window.cortex.voice.onToggle(() => {
+        setAtlasOpen(true);
+        voiceBus.request();
+      }),
+    [],
+  );
+
+  // A time block starts: "Next up: Spanish practice, 20 minutes." The first look at the day, when
+  // the app opens, is silent; only a change after that is announced.
+  const loadToday = useCallback(() => window.cortex.today.get(), []);
+  const todayView = useLive(loadToday, 20_000).data;
+  const lastBlock = useRef<string | null | undefined>(undefined);
+  const nowBlock = todayView?.nowBlock ?? null;
+  useEffect(() => {
+    if (!todayView) return;
+    const id = nowBlock?.taskId ?? null;
+    if (lastBlock.current !== undefined && id && id !== lastBlock.current && nowBlock) {
+      const minutes = Math.round((Date.parse(nowBlock.end) - Date.parse(nowBlock.start)) / 60_000);
+      speaker.say(nextUpLine(nowBlock.title, minutes), { event: 'blocks' });
+    }
+    lastBlock.current = id;
+  }, [todayView, nowBlock]);
+
+  // Finishing something earns a short line, a different one each time.
+  const finishedCount = useRef(0);
+  useEffect(
+    () =>
+      window.cortex.onDataChanged((change) => {
+        if ((change.xp ?? 0) > 0 && change.summary?.includes('Completed')) {
+          speaker.say(completionLine(finishedCount.current++), { event: 'completion' });
+        }
+      }),
+    [],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

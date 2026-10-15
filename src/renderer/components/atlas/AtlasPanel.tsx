@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AtlasChangeView, ChatLineView } from '@shared/atlas-modes';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { ErrorNote, buttonPrimary, buttonQuiet, inputClass } from '@/components/ui';
+import { createRecorder } from '@/lib/recorder';
+import { SentenceChunker } from '@/lib/sentences';
+import { speaker, useFallbackBadge, useSpeaking } from '@/lib/voice';
+import { voiceBus } from '@/lib/voice-bus';
 
 interface Props {
   onClose(): void;
@@ -19,22 +23,64 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
   const [error, setError] = useState<{ text: string; setup: boolean } | null>(null);
   const end = useRef<HTMLDivElement>(null);
 
+  // Speaking and listening (PLAN §8). Everything here stays out of the way unless speech is on.
+  const loadSettings = useCallback(() => window.cortex.settings.get(), []);
+  const voiceSettings = useLive(loadSettings).data?.settings;
+  const voiceOn = voiceSettings?.voiceEnabled ?? false;
+  const autoSend = voiceSettings?.voiceAutoSend ?? false;
+  const fallbackBadge = useFallbackBadge();
+  const speaking = useSpeaking();
+  const [micUp, setMicUp] = useState<boolean | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const chunker = useRef(new SentenceChunker());
+  const streamingRef = useRef(false);
+  const recorder = useRef(createRecorder());
+  const hold = useRef(false);
+  const toggleRef = useRef<() => void>(() => undefined);
+
   const loadStatus = useCallback(() => window.cortex.atlas.status(), []);
   const loadChanges = useCallback(() => window.cortex.atlas.changes(), []);
   const { data: status } = useLive(loadStatus);
   const { data: changes } = useLive(loadChanges);
+  const noKey = status !== null && !status.hasKey;
 
   useEffect(() => {
     void window.cortex.atlas.history().then(setLines);
-    return window.cortex.atlas.onChunk((piece) => setStreaming((s) => s + piece));
+    return window.cortex.atlas.onChunk((piece) => {
+      setStreaming((s) => s + piece);
+      // Each sentence is spoken as soon as it is complete, while the rest is still being written.
+      if (streamingRef.current)
+        for (const sentence of chunker.current.push(piece)) speaker.say(sentence);
+    });
+  }, []);
+
+  // Is VoiceStudio there to listen? Checked while the panel is open and speech is on.
+  useEffect(() => {
+    if (!voiceOn) return;
+    const check = () =>
+      void window.cortex.voice.status().then(
+        (s) => setMicUp(s.backend === 'up'),
+        () => setMicUp(false),
+      );
+    check();
+    const timer = setInterval(check, 8000);
+    return () => clearInterval(timer);
+  }, [voiceOn]);
+  useEffect(() => {
+    const rec = recorder.current;
+    return () => rec.cancel();
   }, []);
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: 'end' });
   }, [lines, streaming]);
 
-  const send = () => {
-    const text = draft.trim();
+  const send = (said?: string) => {
+    const text = (said ?? draft).trim();
     if (!text || sending) return;
+    speaker.stop();
+    chunker.current = new SentenceChunker();
+    streamingRef.current = true;
     setDraft('');
     setError(null);
     setStreaming('');
@@ -52,22 +98,88 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
           setDraft(text);
           return;
         }
+        for (const sentence of chunker.current.flush()) speaker.say(sentence);
         setLines(await window.cortex.atlas.history());
       })
       .catch((e: unknown) => setError({ text: errorMessage(e), setup: false }))
       .finally(() => {
+        streamingRef.current = false;
         setSending(false);
         setStreaming('');
       });
   };
+
+  const say = (text: string) => setError({ text, setup: false });
+
+  async function startRecording() {
+    speaker.stop();
+    try {
+      const s = await window.cortex.voice.status();
+      setMicUp(s.backend === 'up');
+      if (s.backend !== 'up') {
+        say(
+          'VoiceStudio is not running, so voice input is unavailable. Start it, or type instead.',
+        );
+        return;
+      }
+      setError(null);
+      await recorder.current.start();
+      setRecording(true);
+    } catch (e) {
+      say(errorMessage(e));
+    }
+  }
+
+  async function stopAndTranscribe() {
+    setRecording(false);
+    const heard = await recorder.current.stop();
+    if (!heard) return;
+    setTranscribing(true);
+    try {
+      const result = await window.cortex.voice.transcribe(heard.audio, heard.mime);
+      if (!result.ok) {
+        say(
+          result.reason === 'down'
+            ? 'VoiceStudio is not running, so voice input is unavailable. Start it, or type instead.'
+            : `Cortex could not transcribe that: ${result.message}`,
+        );
+      } else if (!result.text) {
+        say('Nothing came through. Try again, a little closer to the microphone.');
+      } else if (autoSend && !noKey) {
+        send(result.text);
+      } else {
+        // The transcript lands in the box, to be fixed before it is sent.
+        setDraft((d) => (d.trim() ? `${d.trim()} ${result.text}` : result.text));
+      }
+    } catch (e) {
+      say(errorMessage(e));
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  const toggleRecording = () => {
+    if (recorder.current.active) void stopAndTranscribe();
+    else void startRecording();
+  };
+  useEffect(() => {
+    toggleRef.current = toggleRecording;
+  });
+  // The global hotkey: press once to start, again to stop.
+  useEffect(
+    () =>
+      voiceBus.listen(() => {
+        hold.current = false;
+        toggleRef.current();
+      }),
+    [],
+  );
 
   const undo = (change: AtlasChangeView) => {
     window.cortex.undo
       .apply(change.id)
       .catch((e: unknown) => setError({ text: errorMessage(e), setup: false }));
   };
-
-  const noKey = status !== null && !status.hasKey;
 
   return (
     <aside
@@ -76,9 +188,25 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
     >
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
         <h2 className="text-lg font-semibold">Atlas</h2>
-        <button className={buttonQuiet} onClick={onClose} aria-label="Close Atlas">
-          Close
-        </button>
+        <span className="flex items-center gap-2">
+          {voiceOn && fallbackBadge && (
+            <span
+              data-testid="fallback-badge"
+              title="VoiceStudio is not running, so Atlas is using this computer's own voice"
+              className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
+            >
+              fallback voice
+            </span>
+          )}
+          {speaking && (
+            <button className={buttonQuiet} onClick={() => speaker.stop()}>
+              Stop speaking
+            </button>
+          )}
+          <button className={buttonQuiet} onClick={onClose} aria-label="Close Atlas">
+            Close
+          </button>
+        </span>
       </header>
 
       <div className="flex gap-2 border-b border-line px-4 py-2">
@@ -176,7 +304,13 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
           aria-label="Message Atlas"
           rows={2}
           className={`${inputClass} resize-none`}
-          placeholder={noKey ? 'Add your API key in Settings first' : 'Message Atlas'}
+          placeholder={
+            noKey
+              ? 'Add your API key in Settings first'
+              : recording
+                ? 'Listening…'
+                : 'Message Atlas'
+          }
           value={draft}
           disabled={noKey}
           onChange={(e) => setDraft(e.target.value)}
@@ -187,6 +321,46 @@ export function AtlasPanel({ onClose, onSettings, onBrainDump, onPlan }: Props) 
             }
           }}
         />
+        {voiceOn && (
+          <button
+            type="button"
+            data-testid="mic"
+            aria-label="Hold to talk"
+            aria-pressed={recording}
+            disabled={micUp === false || transcribing}
+            title={
+              micUp === false
+                ? 'Voice input needs VoiceStudio, which is not running'
+                : 'Hold to talk, or press the voice hotkey to start and stop'
+            }
+            className={`${buttonQuiet} shrink-0 ${recording ? 'border-brand-violet text-ink glow-violet' : ''}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              hold.current = true;
+              void startRecording();
+            }}
+            onPointerUp={() => {
+              if (hold.current && recorder.current.active) {
+                hold.current = false;
+                void stopAndTranscribe();
+              }
+            }}
+            onPointerLeave={() => {
+              if (hold.current && recorder.current.active) {
+                hold.current = false;
+                void stopAndTranscribe();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                toggleRecording();
+              }
+            }}
+          >
+            {recording ? 'Listening' : transcribing ? 'Hearing' : 'Mic'}
+          </button>
+        )}
         <button
           type="submit"
           className={buttonPrimary}
