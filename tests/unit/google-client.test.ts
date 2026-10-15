@@ -97,6 +97,13 @@ vi.mock('@googleapis/calendar', () => ({
           etag: '"4"',
         })),
         delete: rec('events.delete', () => ({})),
+        get: rec('events.get', (a) => ({
+          id: (a as unknown as { eventId: string }).eventId,
+          summary: 'Moved far away',
+          start: { dateTime: '2027-03-10T09:00:00-05:00' },
+          end: { dateTime: '2027-03-10T09:45:00-05:00' },
+          etag: '"5"',
+        })),
       },
     };
   },
@@ -218,6 +225,24 @@ describe('the real Google client: writing (CLAUDE.md rule 7)', () => {
       },
     });
     expect(made).toMatchObject({ id: 'created', title: 'Grade', cortexTaskId: 'task-9' });
+  });
+
+  it('finds one event by id wherever it now is, and says null when it is gone', async () => {
+    const b = backend();
+    const found = await b.cortex.get('abc');
+    expect(found).toMatchObject({
+      id: 'abc',
+      title: 'Moved far away',
+      start: '2027-03-10T14:00:00.000Z',
+    });
+    expect(calls.cal.find(([n]) => n === 'events.get')?.[1]).toMatchObject({
+      calendarId: 'new-cortex',
+      eventId: 'abc',
+    });
+    state.failWith = { status: 404 };
+    expect(await b.cortex.get('abc')).toBeNull();
+    state.failWith = { status: 410 };
+    expect(await b.cortex.get('abc')).toBeNull();
   });
 
   it('treats deleting an event that is already gone as done', async () => {

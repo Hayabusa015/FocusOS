@@ -91,9 +91,12 @@ reading.
 
 ## Disconnecting
 
-- **Settings → Google → Disconnect Google** forgets the sign-in and the cached events on this PC.
-  The **Cortex** calendar stays in Google, and your tasks are untouched.
-- To also remove Cortex's access on Google's side, open
+- **Settings → Google → Disconnect Google** forgets the sign-in and the cached events on this PC,
+  and asks Google to revoke Cortex's access (best effort: it cannot if you are offline). The
+  **Cortex** calendar stays in Google, and your tasks are untouched. Cortex keeps its record of
+  which emails it has already suggested (sender, subject, date and the suggestion), so that
+  reconnecting never suggests the same message twice.
+- To make sure Cortex's access is gone on Google's side, open
   <https://myaccount.google.com/permissions>, choose Cortex, and press **Delete all connections**.
   You can delete the **Cortex** calendar from Google Calendar yourself if you no longer want it.
 

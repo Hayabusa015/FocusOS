@@ -23,7 +23,9 @@ suggested tasks. It is all optional. Cortex works exactly as before without it.
   Email is never sent. It needs your Atlas key.
 - If Google refuses Cortex permission to read Gmail, email suggestions switch themselves off and
   Calendar keeps working. Settings says so.
-- Sign-ins are stored encrypted by Windows, on this PC only.
+- Sign-ins are stored encrypted by Windows, on this PC only. Disconnecting also asks Google to
+  revoke Cortex's access. Cortex keeps its record of which emails it has already suggested (sender,
+  subject, date and the suggestion), so a message is never suggested twice.
 
 ## [0.4.1] - 2026-10-15
 

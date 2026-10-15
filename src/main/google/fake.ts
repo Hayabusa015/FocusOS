@@ -134,6 +134,12 @@ export function createFakeGoogle(
             (e) => e.calendarId === s.cortexCalendarId && inWindow(e, from, to),
           );
         }),
+      get: async (eventId) =>
+        use((s) => {
+          guard(s, 'calendar');
+          const e = s.events.find((x) => x.id === eventId && x.calendarId === s.cortexCalendarId);
+          return e && !e.cancelled ? e : null;
+        }),
       insert: async (d: EventDraft) =>
         use((s) => {
           guard(s, 'calendar');

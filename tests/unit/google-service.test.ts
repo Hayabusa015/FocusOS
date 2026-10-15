@@ -402,6 +402,84 @@ describe('the Cortex calendar (PLAN §9.3)', () => {
     expect(ids).toContain(finished.id);
   });
 
+  it('an event dragged far outside the sync window is moved, not mistaken for deleted', async () => {
+    const task = block('Grade lab reports');
+    await service.syncNow();
+    minutesLater(5);
+    google.mutate((s) => {
+      const e = s.events.find((x) => x.cortexTaskId === task.id)!;
+      e.start = at('09:00', '2027-03-10');
+      e.end = at('09:45', '2027-03-10');
+      e.etag = 'far';
+      e.updated = now.toISOString();
+    });
+    await service.syncNow();
+    const after = store.getTask(task.id)!;
+    expect(after.scheduledStart).not.toBeNull();
+    expect(isoToLocalDate(after.scheduledStart!)).toBe('2027-03-10');
+    expect(google.state().events.some((e) => e.cortexTaskId === task.id)).toBe(true);
+    // And a second look changes nothing.
+    google.mutate((s) => {
+      s.writes = [];
+    });
+    minutesLater(5);
+    await service.syncNow();
+    expect(google.state().writes).toEqual([]);
+    expect(isoToLocalDate(store.getTask(task.id)!.scheduledStart!)).toBe('2027-03-10');
+  });
+
+  it('a calendar that cannot be read does not stop the time blocks from being mirrored', async () => {
+    await service.setCalendars(['primary-cal', 'family-cal']);
+    const flaky = build({
+      auth: {
+        ...google.auth,
+        backend: (c, t) => {
+          const b = google.auth.backend(c, t);
+          return {
+            ...b,
+            calendars: {
+              ...b.calendars,
+              listEvents: async (id, from, to) => {
+                if (id === 'family-cal') throw new Error('Google refused that calendar.');
+                return b.calendars.listEvents(id, from, to);
+              },
+            },
+          };
+        },
+      },
+    });
+    const task = block('Still mirrored');
+    const out = await flaky.syncNow();
+    expect(out).toMatchObject({ ok: false, error: 'Google refused that calendar.' });
+    expect(google.state().events.some((e) => e.cortexTaskId === task.id)).toBe(true);
+    flaky.stop();
+  });
+
+  it('a pull that fails once is retried as a pull, and Google’s move is not overwritten', async () => {
+    const task = block('Grade lab reports');
+    await service.syncNow();
+    minutesLater(5);
+    google.mutate((s) => {
+      const e = s.events.find((x) => x.cortexTaskId === task.id)!;
+      e.start = at('16:30');
+      e.end = at('17:15');
+      e.etag = 'moved';
+      e.updated = now.toISOString();
+    });
+    const real = store.updateTask;
+    const spy = vi.spyOn(store, 'updateTask').mockImplementationOnce(() => {
+      throw new Error('Database busy');
+    });
+    const first = await service.syncNow();
+    expect(first.ok).toBe(false);
+    spy.mockRestore();
+    void real;
+    minutesLater(5);
+    await service.syncNow();
+    expect(isoToLocalTime(store.getTask(task.id)!.scheduledStart!)).toBe('16:30');
+    expect(google.state().events.find((e) => e.cortexTaskId === task.id)!.start).toBe(at('16:30'));
+  });
+
   it('running the sync again makes no changes at all', async () => {
     block('One');
     block('Two', '16:00');
@@ -463,6 +541,24 @@ describe('disconnecting and failing (CLAUDE.md rule 6: the core never depends on
     const again = await service.reconnect();
     expect(again.ok).toBe(true);
     expect(service.status().needsSignIn).toBe(false);
+  });
+
+  it('a cancelled attempt to sign in again keeps the working sign-in', async () => {
+    await service.connect(CLIENT);
+    const cancelled = build({
+      auth: {
+        ...google.auth,
+        authorize: async () => {
+          throw new Error('Sign-in was cancelled in the browser.');
+        },
+      },
+    });
+    const out = await cancelled.reconnect();
+    expect(out.ok).toBe(false);
+    expect(secrets.refreshToken()).toBe('fake-refresh-token');
+    expect(cancelled.status().connected).toBe(true);
+    expect(await cancelled.syncNow()).toMatchObject({ ok: true });
+    cancelled.stop();
   });
 
   it('a failed sync leaves the tasks alone and says what happened', async () => {
@@ -603,6 +699,31 @@ describe('email suggestions (PLAN §9.4)', () => {
     expect(asked).not.toContain('"id":"m1"');
     expect(asked).not.toContain('"id":"m2"');
     expect(service.suggestions().map((s) => s.subject)).toEqual(['Please reply about Friday']);
+  });
+
+  it('a burst of mail is read in batches, none skipped, none asked twice', async () => {
+    google.mutate((g) => {
+      g.mail = Array.from({ length: 60 }, (_, i) =>
+        mail(`b${String(i).padStart(2, '0')}`, `Note ${i}`, {
+          date: new Date(now.getTime() - (i + 1) * 60_000).toISOString(),
+        }),
+      );
+    });
+    const allQuiet = (req: { body: { messages: { content: unknown }[] } }) => {
+      const ids = [...JSON.stringify(req.body.messages).matchAll(/\\"id\\":\\"(b\d+)\\"/g)].map(
+        (m) => m[1],
+      );
+      return reply({
+        items: ids.map((id) => ({ id, actionable: false, reason: 'No', task: null })),
+      });
+    };
+    anthropic.push(allQuiet, allQuiet, allQuiet);
+    const out = await service.checkEmail(true);
+    expect(out).toMatchObject({ ok: true, proposed: 0 });
+    expect(anthropic.requests).toHaveLength(3); // 25 + 25 + 10
+    expect(db.prepare('SELECT COUNT(*) AS n FROM email_suggestions').get()).toEqual({ n: 60 });
+    expect(await service.checkEmail(true)).toMatchObject({ ok: true, proposed: 0 });
+    expect(anthropic.requests).toHaveLength(3);
   });
 
   it('Accept makes the task (with any edits), tagged as from email, exactly once', async () => {

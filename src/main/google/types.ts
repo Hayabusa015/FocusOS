@@ -48,6 +48,8 @@ export interface CortexCalendar {
   /** Finds or creates the calendar and returns its id. */
   ensure(): Promise<string>;
   list(fromIso: string, toIso: string): Promise<RemoteEvent[]>;
+  /** One event by id, wherever it now sits in time. Null when it is gone. */
+  get(eventId: string): Promise<RemoteEvent | null>;
   insert(draft: EventDraft): Promise<RemoteEvent>;
   patch(eventId: string, draft: EventDraft): Promise<RemoteEvent>;
   remove(eventId: string): Promise<void>;

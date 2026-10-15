@@ -38,7 +38,9 @@ import { PermissionDeniedError, SignInRequiredError } from './types';
 import type { GoogleAuth, GoogleBackend, RemoteEvent } from './types';
 
 const WINDOW_DAYS = 14;
-const MAX_PER_EMAIL_RUN = 25;
+/** Atlas reads this many messages per request, and at most this many per check. */
+const EMAIL_BATCH = 25;
+const MAX_EMAIL_PER_CHECK = 100;
 const FIRST_RUN_LOOKBACK_MS = 3 * 24 * 3600_000;
 
 export interface GoogleServiceDeps {
@@ -288,17 +290,34 @@ export function createGoogleService(deps: GoogleServiceDeps) {
           syncedAt: row.syncedAt,
         });
     }
+    // An event moved far outside the window is not in the list, but it is not deleted either:
+    // ask for it by id before deciding anything. (A failed lookup stops the sync; nothing is
+    // cleared on a guess.)
+    const listed = new Set(remote.map((e) => e.id));
+    const wantedTasks = new Set(tasks.map((t) => t.id));
+    for (const [taskId, m] of mirrors) {
+      if (listed.has(m.googleId) || !wantedTasks.has(taskId)) continue;
+      const found = await b.cortex.get(m.googleId);
+      if (found) remote.push(found);
+    }
     const plan = planCortexSync({ tasks, mirrors, remote });
 
     const seen = new Map(remote.map((e) => [e.id, e]));
     let changed = false;
     const errors: unknown[] = [];
-    const attempt = async (fn: () => Promise<void> | void) => {
+    // Events whose change did not go through keep their old record, so the next try sees the same
+    // difference and decides the same way, instead of mistaking Google's move for old news.
+    const failed = new Set<string>();
+    const eventOfTask = new Map(
+      remote.flatMap((e) => (e.cortexTaskId ? [[e.cortexTaskId, e.id]] : [])),
+    );
+    const attempt = async (fn: () => Promise<void> | void, eventId?: string) => {
       try {
         await fn();
       } catch (error) {
         if (error instanceof SignInRequiredError) throw error;
         errors.push(error);
+        if (eventId) failed.add(eventId);
       }
     };
 
@@ -319,7 +338,7 @@ export function createGoogleService(deps: GoogleServiceDeps) {
       await attempt(async () => {
         const made = await b.cortex.patch(r.eventId, r.draft);
         seen.set(made.id, made);
-      });
+      }, r.eventId);
     }
     for (const r of plan.pull) {
       await attempt(() => {
@@ -332,7 +351,7 @@ export function createGoogleService(deps: GoogleServiceDeps) {
           },
         });
         changed = true;
-      });
+      }, eventOfTask.get(r.taskId));
     }
     for (const r of plan.clearBlock) {
       await attempt(() => {
@@ -344,7 +363,7 @@ export function createGoogleService(deps: GoogleServiceDeps) {
 
     // The cache now says what Google says, as of the moment the tasks were read.
     inTransaction(() => {
-      for (const e of seen.values()) upsertEvent(ctx, e, readAt);
+      for (const e of seen.values()) if (!failed.has(e.id)) upsertEvent(ctx, e, readAt);
       deleteUnseen(ctx, calendarId, [...seen.keys()], from, to);
     });
     if (errors.length > 0) throw errors[0];
@@ -357,20 +376,31 @@ export function createGoogleService(deps: GoogleServiceDeps) {
     const b = backend();
     if (!b) return ok();
     if (!deps.settings().googleCalendar) return ok();
-    try {
-      await readCalendars(b);
-      await reconcile(b);
+    // The two halves do not depend on each other: one calendar that cannot be read must not stop
+    // the time blocks from being mirrored, or a move in Google from coming back.
+    const problems: unknown[] = [];
+    for (const half of [readCalendars, reconcile]) {
+      try {
+        await half(b);
+      } catch (error) {
+        if (error instanceof SignInRequiredError) {
+          problems.unshift(error);
+          break;
+        }
+        problems.push(error);
+      }
+    }
+    if (problems.length === 0) {
       kv.delete(K.calendarError);
       kv.delete(K.needsSignIn);
       kv.set(K.lastSync, ctx.nowIso());
       deps.notifyChanged();
       return ok();
-    } catch (error) {
-      noteFailure(error, 'calendar');
-      deps.log(`Google Calendar sync failed: ${plain(error)}`);
-      deps.notifyChanged();
-      return fail(error);
     }
+    noteFailure(problems[0], 'calendar');
+    deps.log(`Google Calendar sync failed: ${plain(problems[0])}`);
+    deps.notifyChanged();
+    return fail(problems[0]);
   }
   const syncNow = (): Promise<GoogleOutcome> => exclusive(doSync);
 
@@ -412,12 +442,21 @@ export function createGoogleService(deps: GoogleServiceDeps) {
         new Error('This PC cannot keep a Google sign-in safely, so Cortex will not save one.'),
       );
     }
+    const before = {
+      clientId: clientId(),
+      clientSecret: secrets.clientSecret(),
+      refreshToken: secrets.refreshToken(),
+      cortexId: cortexId(),
+    };
     try {
       kv.set(K.clientId, client.clientId);
       secrets.setClientSecret(client.clientSecret);
       const tokens = await deps.auth.authorize(client);
       secrets.setRefreshToken(tokens.refreshToken);
       cached = null;
+      // A new sign-in finds (or makes) its own Cortex calendar; it never inherits the id of
+      // whichever account was connected before.
+      kv.delete(K.cortexId);
       const b = backend() as GoogleBackend;
 
       const me = await b.profile();
@@ -449,9 +488,17 @@ export function createGoogleService(deps: GoogleServiceDeps) {
       kv.delete(K.needsSignIn);
       kv.delete(K.calendarError);
     } catch (error) {
-      // A sign-in that did not finish leaves nothing half-saved.
-      secrets.clearRefreshToken();
+      // A sign-in that did not finish leaves things as they were: a working sign-in survives a
+      // cancelled attempt to sign in again, and a first attempt leaves nothing half-saved.
       cached = null;
+      if (before.refreshToken && before.clientId && before.clientSecret) {
+        kv.set(K.clientId, before.clientId);
+        secrets.setClientSecret(before.clientSecret);
+        secrets.setRefreshToken(before.refreshToken);
+        if (before.cortexId) kv.set(K.cortexId, before.cortexId);
+      } else {
+        secrets.clearRefreshToken();
+      }
       return fail(error);
     }
     return doSync();
@@ -531,38 +578,42 @@ export function createGoogleService(deps: GoogleServiceDeps) {
         const now = ctx.now().getTime();
         const last = kv.get(K.gmailLastRun, z.number()) ?? now - FIRST_RUN_LOOKBACK_MS;
         // A minute of overlap, so a message that arrived while the last run was working is not missed.
-        const ids = await b.mail.listInbox(last - 60_000, MAX_PER_EMAIL_RUN * 2);
+        const ids = await b.mail.listInbox(last - 60_000, MAX_EMAIL_PER_CHECK);
         const known = knownMessageIds(ctx, ids);
-        const fresh = ids.filter((id) => !known.has(id)).slice(0, MAX_PER_EMAIL_RUN);
-        const metas = [];
-        for (const id of fresh) metas.push(await b.mail.getMeta(id));
-
-        const proposals = await triageMessages(deps.atlas, metas);
-        const byId = new Map(metas.map((m) => [m.id, m]));
-        inTransaction(() => {
-          for (const p of proposals) {
-            const m = byId.get(p.messageId);
-            if (!m) continue;
-            const proposal = EmailProposal.parse({
-              actionable: p.actionable,
-              reason: p.reason,
-              task: p.task,
-            });
-            // Only these four things are kept: sender, subject, date, and the proposal.
-            insertSuggestion(ctx, {
-              gmailMessageId: m.id,
-              from: m.from,
-              subject: m.subject,
-              receivedAt: m.date,
-              proposedJson: JSON.stringify(proposal),
-              status: p.actionable ? 'pending' : 'not_actionable',
-            });
-          }
-        });
+        const fresh = ids.filter((id) => !known.has(id));
+        let proposed = 0;
+        // Atlas sees a few dozen at a time. Each batch is saved before the next is asked for, so a
+        // failure part-way keeps what was done and the rest are tried again next time.
+        for (let at = 0; at < fresh.length; at += EMAIL_BATCH) {
+          const metas = [];
+          for (const id of fresh.slice(at, at + EMAIL_BATCH)) metas.push(await b.mail.getMeta(id));
+          const proposals = await triageMessages(deps.atlas, metas);
+          const byId = new Map(metas.map((m) => [m.id, m]));
+          inTransaction(() => {
+            for (const p of proposals) {
+              const m = byId.get(p.messageId);
+              if (!m) continue;
+              const proposal = EmailProposal.parse({
+                actionable: p.actionable,
+                reason: p.reason,
+                task: p.task,
+              });
+              // Only these four things are kept: sender, subject, date, and the proposal.
+              insertSuggestion(ctx, {
+                gmailMessageId: m.id,
+                from: m.from,
+                subject: m.subject,
+                receivedAt: m.date,
+                proposedJson: JSON.stringify(proposal),
+                status: p.actionable ? 'pending' : 'not_actionable',
+              });
+            }
+          });
+          proposed += proposals.filter((p) => p.actionable).length;
+        }
         kv.set(K.gmailLastRun, now);
         kv.set(K.gmailState, 'ok');
         kv.delete(K.gmailError);
-        const proposed = proposals.filter((p) => p.actionable).length;
         if (proposed > 0) deps.notifyChanged();
         return { ok: true, proposed, skipped: ids.length - fresh.length };
       } catch (error) {

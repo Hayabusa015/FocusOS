@@ -220,6 +220,17 @@ export function createGoogleBackend(
     cortex: {
       ensure,
       list: async (fromIso, toIso) => listEvents(await ensure(), fromIso, toIso),
+      get: async (eventId) => {
+        const id = await ensure();
+        try {
+          const res = await cal.events.get({ calendarId: id, eventId });
+          return toRemoteEvent(id, res.data);
+        } catch (error) {
+          const status = statusOf(error);
+          if (status === 404 || status === 410) return null;
+          throw mapGoogleError(error, 'calendar');
+        }
+      },
       insert: async (draft) => {
         const id = await ensure();
         return run('calendar', async () =>
