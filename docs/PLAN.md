@@ -23,6 +23,10 @@ built. If a fact about Cortex appears anywhere else, it should point here rather
 | 8 | WorkWork bridge | Not started |
 | 9 | Polish and install | Not started |
 
+User-approved UI refresh (0.4.1): Cortex Pulse, built on the existing Phase 4 app. Today is the
+home workspace, with draggable lists/subtasks, real progress and the gold/violet brand palette.
+This changes the interface direction in §10; it does not start Phase 5.
+
 The builder updates this table and nothing else in this file without asking (see `CLAUDE.md`).
 
 ---
@@ -595,45 +599,47 @@ not to forward school email into it, since school email can contain student info
 
 ## 10. The interface
 
-**Visual direction:** the dark Dayglide-style workspace from the user's sample image. All colours,
-radii and fonts live in `src/renderer/styles/tokens.css`. Each area has an accent token.
+**Visual direction:** the user-approved Cortex Pulse design (2026-10-15): charcoal surfaces,
+gold and violet gradients, glowing progress and the supplied Cortex brain/pulse logo. It replaces
+the earlier Dayglide direction. Colours and shared typography live in
+`src/renderer/styles/tokens.css`. Each area keeps its accent token.
 
 ### Layout
 
 - **Sidebar:**
   - Search
-  - Add task
-  - Capture
   - Today
   - Inbox (with count)
   - Upcoming
-  - Areas: each area, with a progress ring
-  - Home maintenance
   - Wins
-  - Email suggestions (with count)
+  - Your spaces: four areas, then Other spaces for the remaining areas, Someday and Home maintenance
+  - Daily rituals: Morning briefing, Focus session and Shutdown
   - Settings
-- **Top bar:** greeting, date and the Now/Next bar, plus the buttons Quick capture, Plan the rest
-  of today (Atlas) and Shutdown.
-- **Atlas button:** bottom right, opens the Atlas panel as a right-hand drawer.
+- **Top bar:** Quick capture, Atlas and a softer-glow toggle.
+- **Atlas button:** opens the existing panel as a right-hand drawer.
 
 ### Pages
 
 - **Today:**
-  - The **Now/Next** bar: "Now: Grade Chem quizzes until 3:30 · 1h 10m left. Next: Coaching at
-    4:00".
-  - The day-window arc. Day start and end are set in Settings, default 7:00 to 22:00.
-  - At-a-glance counters: tasks, blocks, wins, XP today.
-  - The timeline, mixing Cortex blocks and Google events, with a "now" line.
-  - **Due today** and **Carry forward** lists, the second for items that slipped. Never shown in
-    red.
+  - Default home, with date and an area filter.
+  - Overall and per-list completion bars, completed steps, finished lists and real XP today.
+    A parent with children counts its children; a standalone task counts once. Completing every
+    child fills the bar; the parent completion checkbox remains an explicit task action.
+  - Due-today lists with nested subtasks and inline creation. Drag handles reorder siblings;
+    dropping a child on another open list heading moves it. Move buttons and Alt+arrow shortcuts
+    provide keyboard access. SQLite ordering and existing Undo are used.
+  - The next open task and Start focusing, plus the schedule, current block and day time remaining.
+  - Plan the rest of today and Shutdown remain reachable alongside the schedule.
+  - **Carried forward** for earlier items, with Move to today. Never shown in red.
 - **Inbox:**
   - Uncategorised captures.
   - Per item: assign an area (one key or click), set a date, or mark Someday.
   - **"Sort with Atlas"** proposes an area and date for each item; the user approves them as a
     batch.
 - **Area page:**
-  - A board with To do, Doing and Done this week.
-  - Progress bar for the week, and for each unit on class areas.
+  - List view by default with the same nested steps, ordering and completion bars.
+  - Board view retains To do, Doing and Done this week.
+  - Future bridge work adds progress for each unit on class areas.
   - Upcoming for this area only.
   - Class areas group tasks by unit code when the bridge is connected.
 - **Upcoming:** the next 14 days grouped by day, including maintenance items coming due.

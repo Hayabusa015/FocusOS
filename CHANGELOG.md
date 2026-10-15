@@ -3,6 +3,22 @@
 Each released version has a section here. The release workflow publishes that section as the
 release notes, and refuses to publish a version that has none (PLAN §11B).
 
+## [0.4.1] - 2026-10-15
+
+A brighter pulse for your day: charcoal surfaces, gold light and violet gradients.
+
+- **Today is home.** A simpler sidebar puts Today, Inbox, Upcoming and Wins together, with your
+  spaces below. Capture and Atlas are always in the top bar; daily rituals live in the sidebar.
+- **Lists with steps.** Add subtasks inline, collapse lists, drag lists or their steps to reorder,
+  and drop a step onto another list's heading to move it. Ordering is saved in the database and
+  supports Undo. Move buttons and Alt+arrow shortcuts work without dragging.
+- **Progress you can see.** Glowing per-list and overall bars fill from real task completion.
+  Nested steps count once; a standalone task counts as one step. Today's XP comes from saved wins.
+- **Your spaces, your choice.** Area pages open in list view, with the existing board one click away.
+- **Quick capture.** Capture or Ctrl+N opens a focused text field, with the existing local shorthand.
+- **More glow when you want it.** A top-bar toggle softens the glow; reduced-motion preferences
+  are respected. The core still works offline, and Atlas voice remains available.
+
 ## [0.4.0] - 2026-10-15
 
 Atlas can talk, and listen. It is off until you turn it on, and nothing else depends on it.

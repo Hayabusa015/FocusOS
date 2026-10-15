@@ -124,7 +124,7 @@ test('quitting VoiceStudio switches Atlas to the fallback voice with no error', 
       const r = await window.cortex.atlas.setKey(key);
       if (!r.ok) throw new Error(r.error);
     }, KEY);
-    await nav(page, /^Atlas/).click();
+    await page.getByRole('button', { name: 'Atlas', exact: true }).click();
     const panel = page.getByRole('complementary', { name: 'Atlas' });
 
     // With VoiceStudio up, Atlas speaks in its own voice and there is no badge.
@@ -160,7 +160,7 @@ test('push-to-talk: the button records, VoiceStudio transcribes, the words land 
       const r = await window.cortex.atlas.setKey(key);
       if (!r.ok) throw new Error(r.error);
     }, KEY);
-    await nav(page, /^Atlas/).click();
+    await page.getByRole('button', { name: 'Atlas', exact: true }).click();
     const panel = page.getByRole('complementary', { name: 'Atlas' });
     const mic = panel.getByTestId('mic');
     await expect(mic).toBeEnabled();
@@ -192,13 +192,21 @@ test('push-to-talk: the hotkey is held while speech is on, and toggles recording
   const fake = await startFakeVoiceStudio({ transcript: 'what is on today' });
   const { app, page, errors } = await launch(fake.url);
   try {
+    // Leave the installed app's default shortcut alone during an isolated test run.
+    await page.evaluate(() =>
+      window.cortex.settings.update({ voiceHotkey: 'Control+Alt+Shift+F11' }),
+    );
     // Off by default: the key is not taken.
     expect(
-      await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('Control+Alt+Space')),
+      await app.evaluate(({ globalShortcut }) =>
+        globalShortcut.isRegistered('Control+Alt+Shift+F11'),
+      ),
     ).toBe(false);
     await enableVoice(page);
     expect(
-      await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('Control+Alt+Space')),
+      await app.evaluate(({ globalShortcut }) =>
+        globalShortcut.isRegistered('Control+Alt+Shift+F11'),
+      ),
     ).toBe(true);
     await page.evaluate(async (key) => {
       const r = await window.cortex.atlas.setKey(key);
@@ -224,7 +232,9 @@ test('push-to-talk: the hotkey is held while speech is on, and toggles recording
     // Turning speech off gives the key back.
     await page.evaluate(() => window.cortex.settings.update({ voiceEnabled: false }));
     expect(
-      await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('Control+Alt+Space')),
+      await app.evaluate(({ globalShortcut }) =>
+        globalShortcut.isRegistered('Control+Alt+Shift+F11'),
+      ),
     ).toBe(false);
     expect(errors).toEqual([]);
   } finally {
@@ -240,7 +250,7 @@ test('with speech off (the default) Cortex asks VoiceStudio for nothing and show
     await page.waitForTimeout(6500); // longer than the start-up pre-render delay
     expect(fake.speech).toHaveLength(0);
     expect(existsSync(join(dataDir, 'audio-cache'))).toBe(false);
-    await nav(page, /^Atlas/).click();
+    await page.getByRole('button', { name: 'Atlas', exact: true }).click();
     await expect(page.getByTestId('mic')).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
