@@ -183,3 +183,28 @@ export const completionLine = (count: number): string =>
 
 export const focusStartLine = (minutes: number): string =>
   `${FIXED_LINES.focusStart} ${minutesWords(minutes)}.`;
+
+// --- Between the screen and the main process -----------------------------------------------------
+
+export const VoiceSpeakInput = z.object({ text: z.string().trim().min(1).max(4096) });
+export const VoicePreviewInput = z.object({
+  text: z.string().trim().min(1).max(500),
+  design: VoiceDesign,
+});
+export const VoiceTranscribeInput = z.object({
+  audio: z.instanceof(Uint8Array).refine((a) => a.byteLength > 0 && a.byteLength <= 25_000_000, {
+    message: 'The recording is empty or too long',
+  }),
+  mime: z.string().max(60),
+});
+
+export type VoiceClip =
+  | { ok: true; audio: Uint8Array; mime: string; cached: boolean; ms: number }
+  | { ok: false; reason: 'down' | 'error'; message: string };
+export type VoiceTranscript =
+  { ok: true; text: string } | { ok: false; reason: 'down' | 'error'; message: string };
+export interface VoiceStatusView {
+  backend: 'up' | 'down';
+  fixedCached: number;
+  fixedTotal: number;
+}

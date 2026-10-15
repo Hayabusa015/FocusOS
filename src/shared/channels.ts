@@ -72,6 +72,12 @@ export const CHANNELS = {
   atlasDump: 'atlas:dump',
   atlasDumpApply: 'atlas:dump-apply',
 
+  voiceStatus: 'voice:status',
+  voiceSpeak: 'voice:speak',
+  voicePreview: 'voice:preview',
+  voiceTranscribe: 'voice:transcribe',
+  voicePrerender: 'voice:prerender',
+
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
 } as const;
@@ -86,6 +92,8 @@ export const EVENTS = {
   openShutdown: 'ritual:open-shutdown',
   /** A piece of Atlas's reply as it streams in. */
   atlasChunk: 'atlas:chunk',
+  /** The voice hotkey was pressed: start or stop recording. */
+  voiceToggle: 'voice:toggle',
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];
