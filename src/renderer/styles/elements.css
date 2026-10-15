@@ -403,19 +403,25 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-violet) 60%, transparent);
   }
 
-  /* The highlight that travels between items. It springs past its stop and settles. */
+  /*
+   * The highlight that travels between items. It springs past its stop and settles. It runs the
+   * full width of the rail (the nav's 1rem padding on each side), with the gold bar on the rail's
+   * own edge and a glow that fades out to the right, so it reads the same open or folded.
+   */
   .nav-mark {
     position: absolute;
-    left: 0;
-    right: 0;
+    left: -1rem;
+    right: -1rem;
     top: 0;
     z-index: 0;
     pointer-events: none;
-    border-radius: 0.5rem;
-    background: color-mix(in srgb, var(--color-ink) 7%, transparent);
-    box-shadow:
-      inset 3px 0 0 var(--color-accent),
-      0 0 26px -6px color-mix(in srgb, var(--color-accent) 55%, transparent);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      color-mix(in srgb, var(--color-ink) 5%, transparent) 65%,
+      transparent
+    );
+    box-shadow: inset 3px 0 0 var(--color-accent);
   }
   .nav-mark-springy {
     transition:
@@ -434,17 +440,53 @@
     }
   }
 
+  /*
+   * The count. Open, it is a pill at the item's right. Folded, the same element shrinks into a
+   * dot on the icon's corner, so the number is never lost, only reduced to "something is waiting".
+   * It is placed the same way in both states, so every property can animate between them.
+   */
   .nav-badge {
-    margin-left: auto;
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    translate: 0 -50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
     border-radius: 999px;
-    padding: 0 0.5rem;
+    padding: 0 0.4rem;
     font-size: 0.75rem;
+    line-height: 1;
     background: var(--color-rail-raised);
     color: var(--color-rail-ink);
-    transition: transform 420ms var(--ease-spring);
+    transition:
+      top 320ms var(--ease-out),
+      right 320ms var(--ease-out),
+      translate 320ms var(--ease-out),
+      min-width 320ms var(--ease-out),
+      height 320ms var(--ease-out),
+      padding 320ms var(--ease-out),
+      font-size 160ms ease,
+      background-color 260ms ease,
+      box-shadow 320ms ease,
+      transform 420ms var(--ease-spring);
   }
   .nav-item:hover .nav-badge {
     transform: scale(1.15);
+  }
+  .nav-shell[data-collapsed] .nav-badge {
+    top: 0.45rem;
+    right: 0.55rem;
+    translate: 0 0;
+    min-width: 0.5rem;
+    height: 0.5rem;
+    padding: 0;
+    font-size: 0;
+    color: transparent;
+    background: var(--color-accent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 70%, transparent);
   }
 
   /* A class's marker: a slim bar in its colour, filled to the week's progress. */
@@ -485,11 +527,181 @@
     filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-accent) 70%, transparent));
   }
 
+  /*
+   * Folding the rail. The icons never move: at 1rem of nav padding plus 0.75rem of item padding,
+   * a 1.25rem icon is centred in a 4.75rem rail, so folding only hides the words and closes the
+   * rail around them. The order matters, and it reverses on the way back:
+   *   folding:   the words blur away (about 140 ms), then the rail closes.
+   *   unfolding: the rail opens, then the words come back into focus.
+   * Each state names the transition that leads into it, which is how the order is kept.
+   */
+  .nav-shell {
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+    width: 15rem;
+    transition: width 340ms var(--ease-out);
+  }
+  .nav-shell[data-collapsed] {
+    width: 4.75rem;
+    transition: width 340ms var(--ease-out) 90ms;
+  }
+
+  /* Folded, the rail is too narrow for a scrollbar; the wheel and keyboard still scroll it. */
+  .nav-shell[data-collapsed] nav {
+    scrollbar-width: none;
+  }
+
+  .nav-label {
+    white-space: nowrap;
+  }
+  .nav-fade {
+    transition:
+      opacity 220ms ease 170ms,
+      filter 220ms ease 170ms;
+  }
+  .nav-shell[data-collapsed] .nav-fade {
+    opacity: 0;
+    filter: blur(5px);
+    pointer-events: none;
+    transition:
+      opacity 120ms ease,
+      filter 140ms ease;
+  }
+
+  .nav-icon {
+    display: inline-flex;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-glyph {
+    display: block;
+  }
+
+  /* Folded, pointing at an item grows it a little instead of nudging it sideways. */
+  .nav-shell[data-collapsed] .nav-item:hover {
+    transform: scale(1.06);
+  }
+  .nav-shell[data-collapsed] .nav-item:active {
+    transform: scale(0.94);
+  }
+
+  /* A key hint or arrow at the item's right edge. */
+  .nav-hint {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    translate: 0 -50%;
+    font-size: 0.75rem;
+    color: var(--color-rail-muted);
+  }
+
+  /* Search looks like the field it opens. */
+  .nav-search {
+    background: color-mix(in srgb, var(--color-rail-raised) 70%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink) 6%, transparent);
+  }
+
+  /*
+   * The one item that starts something: a gold chip for the icon and an arrow that leans in when
+   * you point at it. Negative margins keep the chip's footprint equal to a plain icon's.
+   */
+  .nav-feature {
+    color: var(--color-rail-ink);
+    font-weight: 600;
+  }
+  .nav-feature .nav-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: -0.125rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .nav-feature .nav-glyph {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+  .nav-feature .nav-arrow {
+    color: var(--color-rail-ink);
+    display: inline-flex;
+  }
+  .nav-feature .nav-arrow .nav-glyph {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 420ms var(--ease-spring);
+  }
+  .nav-feature:hover .nav-arrow .nav-glyph {
+    transform: translateX(3px);
+  }
+
+  /* A group heading: the words fade out folded, and a short rule takes their place. */
+  .nav-heading {
+    position: relative;
+  }
+  .nav-rule {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.25rem;
+    height: 1px;
+    translate: -50% -50%;
+    background: var(--color-rail-raised);
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+  .nav-shell[data-collapsed] .nav-rule {
+    opacity: 1;
+    transition: opacity 220ms ease 200ms;
+  }
+
+  /*
+   * The fold button sits on the rail's edge, level with the logo. It lights gold when you point
+   * at it, and its chevron turns over (with the same spring as everything else) when folded.
+   */
+  .nav-toggle {
+    position: absolute;
+    top: 1.125rem;
+    right: -0.875rem;
+    z-index: 1;
+    display: grid;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-rail);
+    color: var(--color-rail-muted);
+    box-shadow: inset 0 0 0 1px var(--color-rail-raised);
+    transition:
+      color 200ms ease,
+      box-shadow 320ms ease,
+      transform 420ms var(--ease-spring);
+  }
+  .nav-toggle:hover {
+    color: var(--color-rail-ink);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent),
+      0 0 16px -4px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  }
+  .nav-toggle:active {
+    transform: scale(0.9);
+  }
+  .nav-toggle .nav-glyph {
+    transition: transform 520ms var(--ease-spring);
+  }
+  .nav-shell[data-collapsed] .nav-toggle .nav-glyph {
+    transform: rotate(180deg);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .nav-in {
       animation: none;
     }
-    .nav-item:hover {
+    .nav-item:hover,
+    .nav-shell[data-collapsed] .nav-item:hover {
       transform: none;
     }
   }
