@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import type { Task } from '@shared/core';
 import { Card, ErrorNote, Ring, SectionTitle, inputClass } from '@/components/ui';
 import { TaskList } from '@/components/TaskList';
+import { PulseLists } from '@/components/PulseLists';
+import { PulseProgress } from '@/components/PulseProgress';
 import { TaskRow } from '@/components/TaskRow';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { toggleTask } from '@/lib/actions';
@@ -15,6 +17,7 @@ export function AreaPage({ areas, areaId, openTask, focus }: PageProps & { areaI
   const loadUpcoming = useCallback(() => window.cortex.upcoming.get(), []);
   const { data: upcoming } = useLive(loadUpcoming);
   const [title, setTitle] = useState('');
+  const [board, setBoard] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const run = (action: () => Promise<unknown>) => {
@@ -32,6 +35,34 @@ export function AreaPage({ areas, areaId, openTask, focus }: PageProps & { areaI
     .filter((t) => t.areaId === areaId && t.status !== 'done');
 
   if (!area) return <p className="text-ink-muted">That area is not here any more.</p>;
+
+  if (!board)
+    return (
+      <div>
+        <header className="pulse-page-heading">
+          <div>
+            <p className="pulse-date">Your space</p>
+            <h1>{area.name}</h1>
+            <p data-testid="area-progress">
+              {done.length} done this week · {todo.length + doing.length} still open
+            </p>
+          </div>
+          <button className="pulse-small-button" onClick={() => setBoard(true)}>
+            Board view
+          </button>
+        </header>
+        <ErrorNote message={error} />
+        <PulseProgress tasks={tasks ?? []} />
+        <PulseLists
+          tasks={tasks ?? []}
+          areas={areas}
+          onOpen={openTask}
+          onFocus={focus}
+          addLabel={`Add a task to ${area.name}`}
+          onAdd={(title) => window.cortex.tasks.create({ title, areaId, status: 'todo' })}
+        />
+      </div>
+    );
 
   const column = (heading: string, items: Task[], start?: boolean) => (
     <Card label={heading} className="min-w-0">
@@ -86,6 +117,9 @@ export function AreaPage({ areas, areaId, openTask, focus }: PageProps & { areaI
 
   return (
     <div>
+      <button className="pulse-small-button mb-4" onClick={() => setBoard(false)}>
+        List view
+      </button>
       <header className="mb-6 flex items-center gap-4">
         <Ring done={done.length} total={total} color={areaColor(area)} />
         <div>

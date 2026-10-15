@@ -1,7 +1,6 @@
 import type { Area } from '@shared/core';
 
 export type Route =
-  | { page: 'dashboard' }
   | { page: 'today' }
   | { page: 'inbox' }
   | { page: 'upcoming' }
@@ -18,4 +17,5 @@ export interface PageProps {
   go(route: Route): void;
   /** Starts a focus session, on one task or on nothing in particular. */
   focus(taskId?: string | null): void;
+  shutdown?(): void;
 }

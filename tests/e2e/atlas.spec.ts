@@ -45,7 +45,7 @@ async function launch(): Promise<{ app: ElectronApplication; page: Page; errors:
 
 const nav = (page: Page, name: RegExp) =>
   page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name });
-const openAtlas = (page: Page) => nav(page, /^Atlas/).click();
+const openAtlas = (page: Page) => page.getByRole('button', { name: 'Atlas', exact: true }).click();
 
 const setKey = (page: Page) =>
   page.evaluate(async (key) => {

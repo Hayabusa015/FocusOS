@@ -1,100 +1,50 @@
 # Cortex design philosophy
 
-How Cortex should look and feel. It is for one teacher with ADHD, at a desk, many times a day. This
-file is read by whoever builds or changes the interface (a person or an agent) before they touch it.
+Cortex Pulse is the user-approved direction from 2026-10-15. The supplied Cortex logo sets the
+palette: near-black charcoal, gold light and violet. This replaces the earlier restrained
+Dayglide-inspired workspace. Colours live only in `src/renderer/styles/tokens.css`.
 
-**It states principles, not values.** Colours live only in `src/renderer/styles/tokens.css`, and
-nothing here repeats a hex code (CLAUDE.md rule 3). Where this file names a colour it names the
-token. If a principle here and the plan disagree, `docs/PLAN.md` wins.
+## Feeling and focus
 
-## 1. The feeling
+Make progress satisfying to see. Use luminous fills, rich dark surfaces and a gold-to-violet
+relationship, while keeping task titles and controls readable. Today is the home workspace:
+progress first, then actionable lists, with the next task and schedule alongside.
 
-Calm, dry, precise, a little British, like Atlas. The screen should lower the user's heart rate:
-one clear next thing, then quiet. Personality comes from craft and motion, never from decoration.
+The sidebar has four primary destinations and a compact spaces section. Capture and Atlas stay
+in the top bar. Atlas is available when wanted; it does not dominate the task workspace.
 
-- Dark, near-black ground with gold as the accent and violet for Atlas. Area colours mark meaning
-  (a class, a kind of task), nothing else.
-- Fewer boxes. Sections sit on the page and are divided by thin rules.
-- Glow is information: a lit fill means progress. It is never ambient.
-- Motion is short and springy and always means something moved (a page changed, a block began). It
-  is switched off under `prefers-reduced-motion`.
+## Progress and interaction
 
-## 2. One peak per screen
+- Every counter comes from saved task or XP data. Never invent activity, streaks or statistics.
+- Lists are existing parent tasks; children are their steps. Count children once, without also
+  counting their parent. A standalone task contributes one step. Empty workspaces show zero.
+- Drag handles reorder lists and steps. A child dropped on another open list heading moves there.
+  Database mutations retain Undo and survive restart. Offer move buttons and keyboard shortcuts.
+- Completing all steps fills the list bar. Completing the parent remains an explicit task action.
+- Keep inline creation short. Editing details opens the existing task editor.
 
-Borrowed from scroll-craft's "engineered peak": a screen with three focal points has none.
+## Visual system
 
-- Every page names its one thing: the Dashboard's is the day gauge, Today's is the block you are
-  in, Focus's is the timer, the morning briefing's is the first task.
-- That thing gets the size, the contrast, the glow and the empty space around it. Everything else
-  steps back.
-- Before adding anything to a page, say which feeling it serves. Two neighbouring areas that feel
-  the same mean one of them is filler.
+- Bricolage Grotesque for headings and numbers, the body sans for reading and controls. Bundle
+  fonts for offline use. Use sentence case, clear spacing and visible keyboard focus.
+- Gold identifies progress and capture. Violet adds depth and identifies Atlas. Area colours
+  continue to identify the user's spaces. Resolve all colours through semantic tokens.
+- Use charcoal surface steps, thin illuminated edges and soft ambient glows. Progress fills get
+  the strongest light. Text itself stays crisp. A top-bar control softens the glow.
+- List cards communicate hierarchy; avoid unrelated grids of decorative cards.
+- Motion must not compete with reading or typing. Respect `prefers-reduced-motion`; no flashing.
+- Check text against the actual composited surface. Reading text should meet 4.5:1 contrast.
 
-## 3. Typography floor
+## Product rules
 
-- Two families at most: the body sans and the display face (Bricolage Grotesque, bundled so it works
-  offline). Headings and big numbers use the display face; everything else the sans.
-- Tracking tightens as size grows. Lines of reading text run 45 to 75 characters; the shorter the
-  line, the more generous the line height.
-- Light text on a dark ground is slightly lighter-weight and slightly looser than the same text the
-  other way round. Check it, don't assume it.
-- Labels are plain sentence case. No all-caps shouting, no letter-spaced eyebrow labels.
+- Never guilt. Unfinished earlier work is carried forward. Wins come from real completion.
+- No surprise speech; voice remains off by default and respects quiet hours.
+- The offline core must work without an API key, network or VoiceStudio.
+- Keep the existing focus screen, editor, board, capture shorthand, rituals and Undo accessible.
+- Avoid decorative AI language, emoji icons, fake metrics and moving distractions.
 
-## 4. Spacing and rhythm
+## Verification
 
-- A 4 px base. More space above a heading than below it, so a heading belongs to what follows.
-- Group by proximity before reaching for a border or a card.
-- Density follows the task: lists are tight, the briefing and the focus screen are spacious.
-
-## 5. Colour roles
-
-- Use roles, not shades: ground, surface, raised, line, ink, ink-muted, accent, win, caution, alert,
-  plus the area colours. Add a token to `tokens.css` before using a new colour anywhere else.
-- One accent per screen. Secondary text is tinted toward the ground, not flat grey. No pure black.
-- Body text meets at least 4.5:1 on the surface it really sits on, measured on the composited
-  result (over glow, grain and tinted areas), not on the token pair alone.
-
-## 6. Depth
-
-Five tools, used lightly and in this order: surface steps (ground, surface, raised), a violet-tinted
-shadow for sheets, an edge light on raised things, overlap, and grain so flat colour doesn't look
-flat. Never stack all five on one element.
-
-## 7. Signature moves
-
-Each product earns one or two bespoke touches that exist nowhere else. Cortex's are the springing
-gold highlight in the side nav and the lit, day-aware gauge. New "personality" work should extend
-one of these or propose a third, rather than adding a generic effect.
-
-## 8. The refuse list
-
-These make an interface look machine-made. Don't add them:
-
-- identical grids of feature cards, `01 / 06` counters, decorative scroll cues
-- gradient text, AI-purple gradients, fake dashboards, invented statistics
-- em dashes in UI copy
-- emoji as icons, confetti that isn't earned by a real win
-- anything that moves while the user is trying to read or type
-
-## 9. ADHD-specific rules
-
-- One next step, never a list, when the user is overwhelmed (matches Atlas's persona).
-- Never guilt. Overdue is "still on deck". Wins are stated plainly.
-- No surprise sound or speech. Voice is off by default and obeys quiet hours.
-- Everything reachable by keyboard. Focus states are visible.
-- The offline core must look and work the same with no key, no network and no VoiceStudio.
-
-## 10. Checking your work
-
-- Run the app and look at it (`npm run dev`), at the real window size and at a narrow one.
-- Measure contrast per line on the composited page, as above.
-- Turn on reduced motion and check nothing is lost.
-- Look for dead interaction: hover, press and focus states on everything clickable.
-
-## Where this came from
-
-Principles adapted from the [scroll-craft](https://github.com/nateherkai/scroll-craft) design
-skill (MIT): the feeling curve and single engineered peak, the typography and spacing floor, colour
-roles with one accent, depth as separate tools, a required signature move, and a refuse list.
-scroll-craft is for scroll-driven marketing sites, so its page grammars, scroll devices, scrubbed
-video and fingerprint registry are deliberately left out: Cortex is a desktop app, not a page.
+Inspect the real Electron app at desktop and narrow widths. Exercise completion, progress,
+creation, dragging, keyboard movement, Undo and restart persistence. Check reduced motion and
+error states. Use the repository's static, unit and end-to-end checks before release.

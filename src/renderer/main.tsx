@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/bricolage-grotesque';
 import './styles/tokens.css';
 import './styles/elements.css';
+import './styles/pulse.css';
 import { App } from './app/App';
 import { CapturePage } from './pages/CapturePage';
 
