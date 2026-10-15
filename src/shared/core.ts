@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_VOICE, VoiceDesign, VoiceEvents } from './voice';
 import { AtlasRouteOverrides } from './atlas';
 import { isValidLocalDate } from './dates';
 
@@ -325,6 +326,17 @@ export const AppSettings = z.object({
   atlasRoutes: AtlasRouteOverrides,
   /** A monthly cap on Atlas spending in dollars. Null means no cap. */
   atlasMonthlyCapUsd: z.number().min(0).max(100000).nullable(),
+  /** Atlas speaks (PLAN §8). Off until the user turns it on. Quiet hours are the notification ones. */
+  voiceEnabled: z.boolean(),
+  voiceVolume: z.number().min(0).max(1),
+  /** Which things Atlas says on its own. */
+  voiceEvents: VoiceEvents,
+  /** Send what you said as soon as it is transcribed, instead of waiting for you to press Send. */
+  voiceAutoSend: z.boolean(),
+  /** The designed voice: a description plus a seed. */
+  voiceDesign: VoiceDesign,
+  /** Start and stop recording from anywhere. An Electron accelerator. */
+  voiceHotkey: z.string().min(1).max(60),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 export const AppSettingsPatch = AppSettings.partial();
@@ -346,6 +358,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shutdownWeekdaysOnly: true,
   atlasRoutes: {},
   atlasMonthlyCapUsd: null,
+  voiceEnabled: false,
+  voiceVolume: 0.8,
+  voiceEvents: { briefing: true, blocks: true, completion: true, focus: true, shutdown: true },
+  voiceAutoSend: false,
+  voiceDesign: DEFAULT_VOICE,
+  voiceHotkey: 'Control+Alt+Space',
 };
 
 export const SettingsInfo = z.object({
