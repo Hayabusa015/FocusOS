@@ -36,3 +36,11 @@ export function voiceStudioUrl(
 ): string | undefined {
   return isPackaged ? undefined : env['CORTEX_TEST_VOICESTUDIO_URL'];
 }
+
+/**
+ * Whether Google is a pretend one (CORTEX_TEST_GOOGLE=fake), for the end-to-end tests. Like the
+ * others it is read only in an unpackaged build, so an installed app can never be pointed at it.
+ */
+export function googleFake(isPackaged: boolean, env: Record<string, string | undefined>): boolean {
+  return !isPackaged && env['CORTEX_TEST_GOOGLE'] === 'fake';
+}

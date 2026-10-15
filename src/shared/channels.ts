@@ -78,6 +78,17 @@ export const CHANNELS = {
   voiceTranscribe: 'voice:transcribe',
   voicePrerender: 'voice:prerender',
 
+  googleStatus: 'google:status',
+  googleConnect: 'google:connect',
+  googleReconnect: 'google:reconnect',
+  googleDisconnect: 'google:disconnect',
+  googleCalendars: 'google:calendars',
+  googleSync: 'google:sync',
+  googleEmailCheck: 'google:email-check',
+  googleEmailList: 'google:email-list',
+  googleEmailAccept: 'google:email-accept',
+  googleEmailDismiss: 'google:email-dismiss',
+
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
 } as const;

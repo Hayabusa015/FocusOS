@@ -68,6 +68,8 @@ export function getToday(ctx: Ctx, window: DayWindow): TodayView {
     nowBlock: nowBlock ? strip(nowBlock) : null,
     nextBlock: nextBlock ? strip(nextBlock) : null,
     blocks,
+    // Google events are added by the main process when Google is connected (ipc/core.ts).
+    events: [],
     dueToday,
     doneToday: listCompletedOn(ctx, today),
     carryForward: listCarryForward(ctx, today),

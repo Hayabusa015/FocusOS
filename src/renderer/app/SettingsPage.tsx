@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AppInfo, UpdaterState } from '@shared/schemas';
 import { AtlasSettings } from '@/components/atlas/AtlasSettings';
 import { CoreSettings } from '@/components/CoreSettings';
+import { GoogleSettings } from '@/components/GoogleSettings';
 import { VoiceSettings } from '@/components/VoiceSettings';
 import { formatWhen } from '@/lib/format';
 
@@ -81,6 +82,8 @@ export function SettingsPage({ updater }: { updater: UpdaterState | null }) {
       <AtlasSettings />
 
       <VoiceSettings />
+
+      <GoogleSettings />
 
       <section
         aria-labelledby="about-heading"

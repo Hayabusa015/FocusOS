@@ -23,6 +23,8 @@ export function TodayPage({ areas, openTask, focus, shutdown }: PageProps) {
   const filteredToday = today && {
     ...today,
     blocks: today.blocks.filter((t) => !areaId || t.areaId === areaId),
+    // Calendar events belong to no area, so they only show when the whole day is.
+    events: areaId ? [] : today.events,
   };
   return (
     <div className="pulse-today">
@@ -115,7 +117,8 @@ export function TodayPage({ areas, openTask, focus, shutdown }: PageProps) {
                 Now: {today.nowBlock.title} · {minutesText(today.nowBlock.minutesLeft)} left
               </p>
             )}
-            {filteredToday && filteredToday.blocks.length > 0 ? (
+            {filteredToday &&
+            (filteredToday.blocks.length > 0 || filteredToday.events.length > 0) ? (
               <Schedule today={filteredToday} areas={areas} openTask={openTask} />
             ) : (
               <p className="pulse-empty">Nothing scheduled here. Some room to think.</p>

@@ -41,6 +41,14 @@ import type {
   SortApply,
   SortResult,
 } from './atlas-modes';
+import type {
+  EmailAccept,
+  EmailCheckResult,
+  EmailSuggestionView,
+  GoogleConnect,
+  GoogleOutcome,
+  GoogleStatus,
+} from './google';
 import type { VoiceClip, VoiceDesign, VoiceStatusView, VoiceTranscript } from './voice';
 import type { AppInfo, UpdaterState } from './schemas';
 
@@ -151,6 +159,24 @@ export interface CortexApi {
     prerender(): Promise<{ rendered: number; skipped: number; failed: number }>;
     /** The voice hotkey was pressed. */
     onToggle(listener: () => void): () => void;
+  };
+  google: {
+    status(): Promise<GoogleStatus>;
+    /** Opens Google's sign-in in the browser and saves the result (PLAN §9.2). Problems come back as text. */
+    connect(input: GoogleConnect): Promise<GoogleOutcome>;
+    /** Signs in again with the client ID and secret already saved. */
+    reconnect(): Promise<GoogleOutcome>;
+    disconnect(): Promise<GoogleStatus>;
+    /** Which calendars to show on Today. The "Cortex" calendar is always kept. */
+    setCalendars(ids: string[]): Promise<GoogleOutcome>;
+    sync(): Promise<GoogleOutcome>;
+    /** "Check email": Atlas looks at new inbox mail and proposes tasks. Nothing is created. */
+    checkEmail(): Promise<EmailCheckResult>;
+    emailSuggestions(): Promise<EmailSuggestionView[]>;
+    acceptEmail(
+      input: EmailAccept,
+    ): Promise<{ ok: true; taskId: string } | { ok: false; error: string }>;
+    dismissEmail(id: string): Promise<boolean>;
   };
   settings: {
     get(): Promise<SettingsInfo>;

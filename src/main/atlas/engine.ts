@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import { resolveRoute } from '@shared/atlas';
 import type { AtlasEffort, AtlasModel, AtlasRoute } from '@shared/atlas';
-import type { AppSettings } from '@shared/core';
+import type { AppSettings, CalendarEventView } from '@shared/core';
 import type { Store } from '../db/store';
 import type { DayWindow } from '../db/views';
 import { AtlasError, noKey } from './errors';
@@ -18,6 +18,8 @@ export interface AtlasDeps {
   secrets: SecretStore;
   settings: () => AppSettings;
   createClient?: (apiKey: string) => Anthropic;
+  /** Today's Google Calendar events, when Google is connected (the Planner works around them). */
+  calendarEvents?: () => CalendarEventView[];
 }
 
 export const dayWindowOf = (settings: AppSettings): DayWindow => ({

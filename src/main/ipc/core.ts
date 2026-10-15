@@ -21,7 +21,7 @@ import {
   UndoApply,
   WinLog,
 } from '@shared/core';
-import type { DataChanged, SettingsInfo } from '@shared/core';
+import type { CalendarEventView, DataChanged, SettingsInfo } from '@shared/core';
 import { EmptyRequest as Empty } from '@shared/schemas';
 import { MAINTENANCE_TEMPLATES } from '../domain/maintenance';
 import type { Store } from '../db/store';
@@ -37,6 +37,8 @@ export interface CoreIpcDeps {
   updateSettings(patch: AppSettingsPatch): SettingsInfo;
   getDayWindow(): { dayStart: string; dayEnd: string };
   hideCapture(): void;
+  /** Google Calendar events for today (empty when Google is not connected). */
+  calendarEventsToday?: () => CalendarEventView[];
 }
 
 /** Registers the Phase 1 channels. Every payload is validated before the handler sees it. */
@@ -125,7 +127,12 @@ export function registerCoreIpc(deps: CoreIpcDeps): void {
     trust,
   );
 
-  handle(CHANNELS.todayGet, Empty, () => store.getToday(deps.getDayWindow()), trust);
+  handle(
+    CHANNELS.todayGet,
+    Empty,
+    () => ({ ...store.getToday(deps.getDayWindow()), events: deps.calendarEventsToday?.() ?? [] }),
+    trust,
+  );
   handle(CHANNELS.upcomingGet, Empty, () => store.getUpcoming(), trust);
   handle(CHANNELS.searchRun, SearchQuery, ({ query }) => store.search(query), trust);
 

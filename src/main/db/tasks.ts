@@ -116,6 +116,7 @@ export function createTask(
   input: TaskCreate,
   actor: 'user' | 'atlas' = 'user',
   source: Task['source'] = 'manual',
+  sourceRef: string | null = null,
 ): Mutation<Task> {
   if (input.status === 'done') throw new Error('A new task cannot start out finished');
   let areaId = input.areaId ?? null;
@@ -138,9 +139,9 @@ export function createTask(
     run(
       ctx,
       `INSERT INTO tasks (id, title, notes, area_id, parent_id, status, due_date, due_time,
-         scheduled_start, scheduled_minutes, size, recurrence, source, created_at, updated_at,
-         sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         scheduled_start, scheduled_minutes, size, recurrence, source, source_ref, created_at,
+         updated_at, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.title,
       input.notes ?? null,
@@ -154,6 +155,7 @@ export function createTask(
       input.size ?? 's',
       recurrence ? JSON.stringify(recurrence) : null,
       source,
+      sourceRef,
       stamp,
       stamp,
       nextSortOrder(ctx),
@@ -515,6 +517,19 @@ export function listBlocksOn(ctx: Ctx, date: LocalDate): Task[] {
      ORDER BY t.scheduled_start, t.id`,
     localToIso(date, '00:00'),
     localToIso(addDays(date, 1), '00:00'),
+  ).map(toTask);
+}
+
+/**
+ * Every task that has a time block and is still wanted (not archived, not Someday), finished ones
+ * included: these are the tasks that may have an event in the Cortex calendar (PLAN §9.3).
+ */
+export function listWithBlocks(ctx: Ctx): Task[] {
+  return all(
+    ctx,
+    `${SELECT} WHERE t.deleted_at IS NULL AND t.parent_id IS NULL AND t.status != 'someday'
+       AND t.scheduled_start IS NOT NULL AND t.scheduled_minutes IS NOT NULL
+     ORDER BY t.scheduled_start, t.id`,
   ).map(toTask);
 }
 

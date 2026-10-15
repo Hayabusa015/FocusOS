@@ -34,13 +34,32 @@ export const PLANNER: ModeDef<typeof PlannerOutput> = {
   instructions: `Mode: Planner. Propose a schedule for the rest of today.
 - You are given the time now, the day window, the time blocks already scheduled, and candidate tasks with a suggested length.
 - Choose tasks that matter most: due today first, then what has been put off, then what is quick and unblocks others. Do not try to fit everything.
-- Give each chosen task a start time and a length in minutes. Never start before now, never run past the end of the day, and never overlap an existing block.
+- Give each chosen task a start time and a length in minutes. Never start before now, never run past the end of the day, and never overlap an existing block or a calendar event.
 - Leave real gaps. Plan well under the available time (no more than about 70% of it) so the day has room to breathe.
 - Prefer one hard thing early, with a lighter task after it.
 - You change nothing. The user will accept all, some or none.`,
 };
 
 const defaultMinutes = (t: Task) => SIZE_MINUTES[t.size];
+
+/** Today's timed calendar events as spans of the day (minutes since midnight), and all-day ones by title. */
+function calendarToday(deps: AtlasDeps, today: string) {
+  const spans: (Span & { title: string })[] = [];
+  const allDay: string[] = [];
+  for (const e of deps.calendarEvents?.() ?? []) {
+    if (e.allDay) {
+      allDay.push(e.title);
+      continue;
+    }
+    const start = isoToLocalDate(e.start) < today ? 0 : minutesOfDay(isoToLocalTime(e.start));
+    const end = isoToLocalDate(e.end) > today ? 24 * 60 : minutesOfDay(isoToLocalTime(e.end));
+    if (end > start) spans.push({ start, end, title: e.title });
+  }
+  return { spans, allDay };
+}
+
+const clock = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 export async function planRestOfToday(deps: AtlasDeps): Promise<PlanResult> {
   const { store } = deps;
@@ -51,10 +70,14 @@ export async function planRestOfToday(deps: AtlasDeps): Promise<PlanResult> {
   const nowTime = toLocalTime(ctx.now());
 
   const blocks = view.blocks.filter((b) => b.status !== 'done');
-  const busy: Span[] = blocks.map((b) => ({
-    start: minutesOfDay(isoToLocalTime(b.start)),
-    end: minutesOfDay(isoToLocalTime(b.end)),
-  }));
+  const calendar = calendarToday(deps, today);
+  const busy: Span[] = [
+    ...blocks.map((b) => ({
+      start: minutesOfDay(isoToLocalTime(b.start)),
+      end: minutesOfDay(isoToLocalTime(b.end)),
+    })),
+    ...calendar.spans,
+  ];
 
   // Candidates: due today or earlier, then open undated "to do" tasks. Nothing already blocked.
   const blocked = new Set(view.blocks.map((b) => b.taskId));
@@ -81,6 +104,12 @@ export async function planRestOfToday(deps: AtlasDeps): Promise<PlanResult> {
         end: isoToLocalTime(b.end),
       })),
     )}`,
+    `Calendar events today (fixed, do not overlap): ${JSON.stringify(
+      calendar.spans.map((e) => ({ title: e.title, start: clock(e.start), end: clock(e.end) })),
+    )}`,
+    ...(calendar.allDay.length > 0
+      ? [`All-day events (for context only): ${JSON.stringify(calendar.allDay)}`]
+      : []),
     `Candidate tasks (JSON, with suggested minutes):`,
     JSON.stringify(
       candidates.map((t) => ({
@@ -134,13 +163,16 @@ export function applyPlan(deps: AtlasDeps, apply: PlanApply): ApplyOutcome {
   // The rules are checked again here, not only when the plan was proposed: time may have passed,
   // other blocks may have been added, and the payload comes from the screen.
   const replanning = new Set(apply.blocks.map((b) => b.taskId));
-  const busy: Span[] = deps.store
-    .getToday(window)
-    .blocks.filter((b) => b.status !== 'done' && !replanning.has(b.taskId))
-    .map((b) => ({
-      start: minutesOfDay(isoToLocalTime(b.start)),
-      end: minutesOfDay(isoToLocalTime(b.end)),
-    }));
+  const busy: Span[] = [
+    ...deps.store
+      .getToday(window)
+      .blocks.filter((b) => b.status !== 'done' && !replanning.has(b.taskId))
+      .map((b) => ({
+        start: minutesOfDay(isoToLocalTime(b.start)),
+        end: minutesOfDay(isoToLocalTime(b.end)),
+      })),
+    ...calendarToday(deps, today).spans,
+  ];
   const checked = enforcePlan({
     nowMinute: minutesOfDay(toLocalTime(ctx.now())),
     dayStart: window.dayStart,

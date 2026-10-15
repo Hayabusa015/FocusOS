@@ -47,6 +47,7 @@ import {
   deleteTask,
   getTask,
   listBlocksOn,
+  listWithBlocks,
   listChildren,
   listCarryForward,
   listDueOn,
@@ -88,6 +89,7 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
     listTasks: (filter: TaskFilter) => listTasks(ctx, filter),
     listDueOn: (date: LocalDate) => listDueOn(ctx, date),
     listCarryForward: () => listCarryForward(ctx, ctx.today()),
+    listWithBlocks: () => listWithBlocks(ctx),
     /** Tasks that can trigger a notification today: due today, or with a block today. */
     listForNotices: (): Task[] => {
       const today = ctx.today();
@@ -95,8 +97,8 @@ export function createStore(db: Db, options: { clock?: () => Date; newId?: () =>
       for (const t of [...listDueOn(ctx, today), ...listBlocksOn(ctx, today)]) seen.set(t.id, t);
       return [...seen.values()];
     },
-    createTask: (input: TaskCreate, source?: Task['source']) =>
-      createTask(ctx, input, 'user', source),
+    createTask: (input: TaskCreate, source?: Task['source'], sourceRef?: string | null) =>
+      createTask(ctx, input, 'user', source, sourceRef),
     updateTask: (patch: TaskUpdate) => updateTask(ctx, patch),
     completeTask: (id: string) => completeTask(ctx, id),
     reopenTask: (id: string) => reopenTask(ctx, id),

@@ -3,6 +3,7 @@ import type { Task } from '@shared/core';
 import { BrainDumpDialog } from '@/components/atlas/BrainDumpDialog';
 import { SortDialog } from '@/components/atlas/SortDialog';
 import { ErrorNote, buttonQuiet } from '@/components/ui';
+import { EmailSuggestions } from '@/components/EmailSuggestions';
 import { TaskList } from '@/components/TaskList';
 import { errorMessage, useLive } from '@/hooks/useLive';
 import { areaColor } from '@/lib/areas';
@@ -49,6 +50,7 @@ export function InboxPage({ areas, openTask, newTask }: PageProps) {
       </header>
       {dialog === 'sort' && <SortDialog areas={areas} onClose={() => setDialog(null)} />}
       {dialog === 'dump' && <BrainDumpDialog areas={areas} onClose={() => setDialog(null)} />}
+      <EmailSuggestions areas={areas} />
       <ErrorNote message={error ?? actionError} />
       {tasks && (
         <TaskList

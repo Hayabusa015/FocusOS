@@ -60,7 +60,7 @@ export interface PlanInput {
   nowMinute: number;
   dayStart: string;
   dayEnd: string;
-  /** Time blocks and (later) calendar events already on the day. */
+  /** Time blocks and calendar events already on the day. */
   busy: Span[];
   proposed: ProposedBlock[];
 }

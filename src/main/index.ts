@@ -10,12 +10,13 @@ import {
   Notification,
   safeStorage,
   session,
+  shell,
   Tray,
 } from 'electron';
 import { EVENTS } from '@shared/channels';
 import { toLocalDate } from '@shared/dates';
 import { DEFAULT_SETTINGS } from '@shared/core';
-import type { AppSettings, SettingsInfo } from '@shared/core';
+import type { AppSettings, DataChanged, SettingsInfo } from '@shared/core';
 import trayIconPath from '../../resources/tray.png?asset';
 import { backupDatabase } from './db/backup';
 import { openDatabase } from './db/connection';
@@ -30,9 +31,15 @@ import { createNotifier } from './notifier';
 import { registerCoreIpc } from './ipc/core';
 import { registerAtlasIpc } from './ipc/atlas';
 import { registerVoiceIpc } from './ipc/voice';
+import { registerGoogleIpc } from './ipc/google';
 import { createAudioCache } from './voice/audio-cache';
 import { createVoiceService } from './voice/service';
 import { createVoiceStudioBackend } from './voice/voicestudio';
+import { createGoogleAuth } from './google/client';
+import { createFakeGoogle } from './google/fake';
+import { createFileGoogleSecrets, createMemoryGoogleSecrets } from './google/secrets';
+import { createGoogleService } from './google/service';
+import type { GoogleService } from './google/service';
 import { createAtlas } from './atlas';
 import { createFakeAtlasClient } from './atlas/fake-api';
 import { createFileSecretStore, createMemorySecretStore } from './atlas/secrets';
@@ -43,7 +50,7 @@ import { isAppUrl, makeTrustCheck } from './ipc/trust';
 import { createLogger } from './log';
 import { createElectronUpdaterBackend } from './updater';
 import { createFakeUpdaterBackend } from './updater-fake';
-import { atlasFake, testHooksEnabled, updaterMode, voiceStudioUrl } from './test-hooks';
+import { atlasFake, googleFake, testHooksEnabled, updaterMode, voiceStudioUrl } from './test-hooks';
 
 const APP_ID = 'org.shull.cortex';
 const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'];
@@ -68,6 +75,8 @@ let updater: UpdaterController | null = null;
 let capture: ReturnType<typeof createCaptureWindow> | null = null;
 let keepInTray = DEFAULT_SETTINGS.keepRunningInTray;
 let notifyTimer: NodeJS.Timeout | null = null;
+const googleTimers: NodeJS.Timeout[] = [];
+let stopGoogle: (() => void) | null = null;
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -280,12 +289,22 @@ if (!app.requestSingleInstanceLock()) {
     if (!applyVoiceHotkey()) log.warn('The voice hotkey is taken by another program');
     setTimeout(prerender, 5000);
 
+    // Google (Phase 5) is created further down; until then, and whenever it is not connected,
+    // these quietly do nothing.
+    let google: GoogleService | null = null;
+    /** Every change to data: tell the windows, and let Google mirror any time block that moved. */
+    const notifyData = (change: DataChanged) => {
+      broadcast(EVENTS.dataChanged, change);
+      google?.afterLocalChange();
+    };
+
     registerIpc({ updater, dataDir, isTrustedSender });
     registerVoiceIpc({ voice, isTrustedSender });
     registerCoreIpc({
       store: coreStore,
       isTrustedSender,
-      notifyChanged: (change) => broadcast(EVENTS.dataChanged, change),
+      notifyChanged: notifyData,
+      calendarEventsToday: () => google?.eventsToday() ?? [],
       getSettings: settingsInfo,
       updateSettings: (patch) => {
         const before = currentSettings();
@@ -309,6 +328,7 @@ if (!app.requestSingleInstanceLock()) {
             }
           }
           if (patch.voiceDesign || patch.voiceEnabled) prerender();
+          if (patch.googleCalendar === true) void google?.syncNow();
         } catch (error) {
           hotkeyOk = capture?.setHotkey(before.captureHotkey) ?? false;
           throw error;
@@ -326,21 +346,73 @@ if (!app.requestSingleInstanceLock()) {
     // Atlas (Phase 3). The key is encrypted by the OS and lives in its own file. Without a key
     // nothing here runs, and the rest of the app does not notice.
     const fakeAtlas = atlasFake(app.isPackaged, process.env);
-    const atlas = createAtlas({
+    const atlasDeps = {
       store: coreStore,
       secrets: fakeAtlas
         ? createMemorySecretStore()
         : createFileSecretStore(join(dataDir, 'atlas-key.json'), safeStorage),
       settings: currentSettings,
+      calendarEvents: () => google?.eventsToday() ?? [],
       ...(fakeAtlas ? { createClient: createFakeAtlasClient } : {}),
-    });
+    };
+    const atlas = createAtlas(atlasDeps);
     registerAtlasIpc({
       atlas,
       store: coreStore,
       isTrustedSender,
-      notifyChanged: (change) => broadcast(EVENTS.dataChanged, change),
+      notifyChanged: notifyData,
       sendChunk: (text) => broadcast(EVENTS.atlasChunk, text),
     });
+
+    // Google (Phase 5): the user's personal account, optional. Calendar events on Today, time blocks
+    // mirrored to a calendar named "Cortex" (the only one ever written to), and email suggestions
+    // that wait for a click. Tokens are encrypted by the OS and never reach a window.
+    const fakeGoogle = googleFake(app.isPackaged, process.env);
+    const cortexCalendar = {
+      get: () => settings.get('google.cortexCalendarId', z.string()) ?? null,
+      set: (id: string) => settings.set('google.cortexCalendarId', id),
+    };
+    const fake = fakeGoogle ? createFakeGoogle({ path: join(dataDir, 'fake-google.json') }) : null;
+    google = createGoogleService({
+      store: coreStore,
+      kv: settings,
+      secrets: fake
+        ? createMemoryGoogleSecrets()
+        : createFileGoogleSecrets(join(dataDir, 'google-secrets.json'), safeStorage),
+      auth:
+        fake?.auth ??
+        createGoogleAuth({
+          calendarId: cortexCalendar,
+          openUrl: async (url) => {
+            // Only Google's own sign-in page is ever opened.
+            if (!url.startsWith('https://accounts.google.com/')) {
+              throw new Error('Cortex would not open that address.');
+            }
+            await shell.openExternal(url);
+          },
+        }),
+      settings: currentSettings,
+      atlas: atlasDeps,
+      notifyChanged: () => broadcast(EVENTS.dataChanged, { logId: null, summary: null }),
+      log: (message) => log.warn(message),
+    });
+    registerGoogleIpc({ google, isTrustedSender });
+    // Calendar every 5 minutes and when the window gets focus; email every 15 minutes (PLAN §9).
+    const googleService = google;
+    stopGoogle = () => googleService.stop();
+    let lastFocusSync = 0;
+    app.on('browser-window-focus', () => {
+      if (Date.now() - lastFocusSync < 60_000) return;
+      lastFocusSync = Date.now();
+      void googleService.syncNow();
+    });
+    googleTimers.push(
+      setInterval(() => void googleService.syncNow(), 5 * 60_000),
+      setInterval(() => void googleService.checkEmail(false), 15 * 60_000),
+      setTimeout(() => {
+        void googleService.syncNow().then(() => googleService.checkEmail(false));
+      }, 10_000),
+    );
 
     const notifier = createNotifier({
       store: coreStore,
@@ -375,6 +447,8 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on('will-quit', () => {
     if (notifyTimer) clearInterval(notifyTimer);
+    for (const timer of googleTimers) clearTimeout(timer);
+    stopGoogle?.();
     globalShortcut.unregisterAll();
     capture?.destroy();
     updater?.stop();

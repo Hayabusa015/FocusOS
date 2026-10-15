@@ -23,7 +23,7 @@ import { runnableTools, specsFor } from '../tools';
  * hands the model exactly that list, so a read-only mode physically cannot change anything.
  */
 export interface ModeDef<S extends z.ZodType> {
-  route: Extract<AtlasRoute, 'sorter' | 'planner' | 'scribe' | 'reviewer'>;
+  route: Extract<AtlasRoute, 'sorter' | 'planner' | 'scribe' | 'reviewer' | 'triage'>;
   instructions: string;
   tools: readonly string[];
   schema: S;

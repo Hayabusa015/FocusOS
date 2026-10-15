@@ -229,6 +229,19 @@ export const BlockView = z.object({
 });
 export type BlockView = z.infer<typeof BlockView>;
 
+/** An event from a Google calendar the user chose to show (PLAN §9.3). All-day events carry dates. */
+export const CalendarEventView = z.object({
+  id: z.string(),
+  calendarId: z.string(),
+  calendarName: z.string(),
+  title: z.string(),
+  /** UTC instants, or local dates (YYYY-MM-DD) when `allDay`. */
+  start: z.string(),
+  end: z.string(),
+  allDay: z.boolean(),
+});
+export type CalendarEventView = z.infer<typeof CalendarEventView>;
+
 export const TodayView = z.object({
   date: z.string(),
   nowIso: z.string(),
@@ -242,6 +255,8 @@ export const TodayView = z.object({
   nowBlock: BlockView.extend({ minutesLeft: z.number().int() }).nullable(),
   nextBlock: BlockView.extend({ startsInMinutes: z.number().int() }).nullable(),
   blocks: z.array(BlockView),
+  /** Google Calendar events overlapping today. Empty when Google is not connected. */
+  events: z.array(CalendarEventView),
   dueToday: z.array(Task),
   /** Finished today, so the daily list can show them checked off. */
   doneToday: z.array(Task),
@@ -337,6 +352,10 @@ export const AppSettings = z.object({
   voiceDesign: VoiceDesign,
   /** Start and stop recording from anywhere. An Electron accelerator. */
   voiceHotkey: z.string().min(1).max(60),
+  /** Google (PLAN §9): show chosen calendars and mirror time blocks to the "Cortex" calendar. */
+  googleCalendar: z.boolean(),
+  /** Google (PLAN §9.4): Atlas proposes tasks from new inbox mail. Proposals only. */
+  googleEmailTriage: z.boolean(),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 export const AppSettingsPatch = AppSettings.partial();
@@ -364,6 +383,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   voiceAutoSend: false,
   voiceDesign: DEFAULT_VOICE,
   voiceHotkey: 'Control+Alt+Space',
+  googleCalendar: true,
+  googleEmailTriage: true,
 };
 
 export const SettingsInfo = z.object({

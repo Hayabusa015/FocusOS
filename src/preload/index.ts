@@ -101,6 +101,18 @@ const api: CortexApi = {
     applyBrainDump: (tasks) => call(CHANNELS.atlasDumpApply, tasks),
     onChunk: (listener) => subscribe(EVENTS.atlasChunk, listener),
   },
+  google: {
+    status: () => call(CHANNELS.googleStatus),
+    connect: (input) => call(CHANNELS.googleConnect, input),
+    reconnect: () => call(CHANNELS.googleReconnect),
+    disconnect: () => call(CHANNELS.googleDisconnect),
+    setCalendars: (ids) => call(CHANNELS.googleCalendars, { ids }),
+    sync: () => call(CHANNELS.googleSync),
+    checkEmail: () => call(CHANNELS.googleEmailCheck),
+    emailSuggestions: () => call(CHANNELS.googleEmailList),
+    acceptEmail: (input) => call(CHANNELS.googleEmailAccept, input),
+    dismissEmail: (id) => call(CHANNELS.googleEmailDismiss, { id }),
+  },
   voice: {
     status: () => call(CHANNELS.voiceStatus),
     speak: (text) => call(CHANNELS.voiceSpeak, { text }),

@@ -30,7 +30,7 @@ export const ROUTE_LABELS: Record<AtlasRoute, string> = {
   sorter: 'Sort the inbox',
   planner: 'Plan the rest of today',
   scribe: 'Brain dump',
-  triage: 'Email triage (later)',
+  triage: 'Email triage',
   briefing: 'Morning summary (later)',
   reviewer: 'Weekly review (later)',
 };

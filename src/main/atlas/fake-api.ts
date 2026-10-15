@@ -195,6 +195,24 @@ function answer(body: Body): Block[] {
     });
     return json({ blocks, note: 'Fake Atlas: back to back.' });
   }
+  if (mode.includes('Mode: Triage')) {
+    const items = jsonAfter(prompt, 'Messages (JSON):\n') as {
+      id: string;
+      subject: string;
+    }[];
+    return json({
+      items: items.map((m) =>
+        /please|need|due|deadline|reply|submit|sign|form/i.test(m.subject)
+          ? {
+              id: m.id,
+              actionable: true,
+              reason: 'Fake Atlas: it asks for something',
+              task: { title: m.subject.slice(0, 120), dueDate: null, area: 'Admin', size: 's' },
+            }
+          : { id: m.id, actionable: false, reason: 'Fake Atlas: nothing to do', task: null },
+      ),
+    });
+  }
   if (mode.includes('Mode: Scribe')) {
     const dump = prompt.split('The dump:\n')[1] ?? '';
     const parts = dump
